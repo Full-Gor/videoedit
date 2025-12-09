@@ -91,10 +91,11 @@
             <!-- Right Panel - Tools & Effects -->
             <aside class="right-panel">
                 <div class="tools-tabs">
-                    <button class="tool-tab active" data-tool="effects"><i class="fas fa-magic"></i> Effets</button>
-                    <button class="tool-tab" data-tool="text"><i class="fas fa-font"></i> Texte</button>
-                    <button class="tool-tab" data-tool="audio"><i class="fas fa-music"></i> Audio</button>
-                    <button class="tool-tab" data-tool="filters"><i class="fas fa-sliders-h"></i> Filtres</button>
+                    <button class="tool-tab active" data-tool="effects">Effets</button>
+                    <button class="tool-tab" data-tool="text">Texte</button>
+                    <button class="tool-tab" data-tool="audio">Audio</button>
+                    <button class="tool-tab" data-tool="filters">Filtres</button>
+                    <button class="tool-tab" data-tool="guide">Guide</button>
                 </div>
 
                 <!-- Effects Panel -->
@@ -404,6 +405,189 @@
                                 <button class="speed-btn" data-speed="4">4x</button>
                             </div>
                             <button class="action-btn" data-action="reverse"><i class="fas fa-backward"></i> Inverser</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guide Panel -->
+                <div class="tool-panel" id="guide-panel">
+                    <div class="guide-content">
+                        <div class="guide-section">
+                            <h4>Raccourcis clavier</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="key">Espace</span> lecture / pause</div>
+                                <div class="guide-item"><span class="key">V</span> outil sélection</div>
+                                <div class="guide-item"><span class="key">C</span> outil coupe</div>
+                                <div class="guide-item"><span class="key">B</span> outil rasoir</div>
+                                <div class="guide-item"><span class="key">Ctrl+B</span> diviser au curseur</div>
+                                <div class="guide-item"><span class="key">Ctrl+D</span> dupliquer clip</div>
+                                <div class="guide-item"><span class="key">Ctrl+Z</span> annuler</div>
+                                <div class="guide-item"><span class="key">Ctrl+Shift+Z</span> rétablir</div>
+                                <div class="guide-item"><span class="key">Suppr</span> supprimer clip</div>
+                                <div class="guide-item"><span class="key">←</span> reculer 0.1s</div>
+                                <div class="guide-item"><span class="key">→</span> avancer 0.1s</div>
+                                <div class="guide-item"><span class="key">Shift+←</span> reculer 1s</div>
+                                <div class="guide-item"><span class="key">Shift+→</span> avancer 1s</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Outils timeline</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Sélection</span> déplacer et sélectionner les clips</div>
+                                <div class="guide-item"><span class="tool-name">Coupe</span> ajuster les points d'entrée/sortie</div>
+                                <div class="guide-item"><span class="tool-name">Glisser</span> décaler le contenu dans le clip</div>
+                                <div class="guide-item"><span class="tool-name">Rasoir</span> couper le clip au clic</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Actions clips</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Diviser</span> séparer en deux au curseur</div>
+                                <div class="guide-item"><span class="tool-name">Supprimer</span> retirer le clip sélectionné</div>
+                                <div class="guide-item"><span class="tool-name">Dupliquer</span> copier à la suite</div>
+                                <div class="guide-item"><span class="tool-name">Fusionner</span> combiner les clips de la piste</div>
+                                <div class="guide-item"><span class="tool-name">Délier</span> séparer audio et vidéo</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Médiathèque</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Importer</span> ajouter fichiers vidéo, audio, image</div>
+                                <div class="guide-item"><span class="tool-name">Glisser-déposer</span> déposer directement sur la page</div>
+                                <div class="guide-item"><span class="tool-name">Double-clic</span> ajouter média à la timeline</div>
+                                <div class="guide-item"><span class="tool-name">Clic</span> prévisualiser le média</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Transitions vidéo</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Fondu</span> apparition/disparition progressive</div>
+                                <div class="guide-item"><span class="tool-name">Dissolution</span> mélange entre deux clips</div>
+                                <div class="guide-item"><span class="tool-name">Balayage</span> révélation directionnelle</div>
+                                <div class="guide-item"><span class="tool-name">Zoom</span> agrandissement/réduction</div>
+                                <div class="guide-item"><span class="tool-name">Glissement</span> translation horizontale</div>
+                                <div class="guide-item"><span class="tool-name">Rotation</span> pivot entre clips</div>
+                                <div class="guide-item"><span class="tool-name">Flou</span> transition par défocalisation</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Transitions audio</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Fondu entrée</span> augmentation progressive du volume</div>
+                                <div class="guide-item"><span class="tool-name">Fondu sortie</span> diminution progressive du volume</div>
+                                <div class="guide-item"><span class="tool-name">Crossfade</span> enchaînement entre deux pistes</div>
+                                <div class="guide-item"><span class="tool-name">Ducking</span> réduction auto sous la voix</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Effets audio</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Réverbération</span> simulation d'espace acoustique</div>
+                                <div class="guide-item"><span class="tool-name">Écho</span> répétition décalée du signal</div>
+                                <div class="guide-item"><span class="tool-name">Pitch +/-</span> modification de la tonalité</div>
+                                <div class="guide-item"><span class="tool-name">Vitesse +/-</span> accélération ou ralentissement</div>
+                                <div class="guide-item"><span class="tool-name">Anti-bruit</span> suppression du bruit de fond</div>
+                                <div class="guide-item"><span class="tool-name">Normaliser</span> équilibrage des niveaux</div>
+                                <div class="guide-item"><span class="tool-name">Bass Boost</span> amplification des basses</div>
+                                <div class="guide-item"><span class="tool-name">Voix +</span> clarification des voix</div>
+                                <div class="guide-item"><span class="tool-name">Égaliseur</span> ajustement par bande de fréquence</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Texte et bulles</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Texte</span> superposition avec police personnalisée</div>
+                                <div class="guide-item"><span class="tool-name">Bulle dialogue</span> style bande dessinée classique</div>
+                                <div class="guide-item"><span class="tool-name">Bulle pensée</span> forme nuage</div>
+                                <div class="guide-item"><span class="tool-name">Bulle cri</span> contour en étoile</div>
+                                <div class="guide-item"><span class="tool-name">Bulle murmure</span> contour pointillé</div>
+                                <div class="guide-item"><span class="tool-name">Narrateur</span> encadré rectangulaire</div>
+                                <div class="guide-item"><span class="tool-name">Sous-titres</span> texte synchronisé en bas</div>
+                                <div class="guide-item"><span class="tool-name">Import SRT</span> chargement fichier sous-titres</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Effets visuels</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Détourage</span> suppression arrière-plan uni</div>
+                                <div class="guide-item"><span class="tool-name">Chroma Key</span> incrustation fond coloré</div>
+                                <div class="guide-item"><span class="tool-name">Bordures</span> cadre autour de la vidéo</div>
+                                <div class="guide-item"><span class="tool-name">Dégradés</span> superposition colorée</div>
+                                <div class="guide-item"><span class="tool-name">Filtres</span> préréglages colorimétriques</div>
+                                <div class="guide-item"><span class="tool-name">Vignette</span> assombrissement périphérique</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Ajustements</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Luminosité</span> niveau de clarté global</div>
+                                <div class="guide-item"><span class="tool-name">Contraste</span> écart entre tons clairs et sombres</div>
+                                <div class="guide-item"><span class="tool-name">Saturation</span> intensité des couleurs</div>
+                                <div class="guide-item"><span class="tool-name">Teinte</span> rotation de la palette</div>
+                                <div class="guide-item"><span class="tool-name">Flou</span> adoucissement de l'image</div>
+                                <div class="guide-item"><span class="tool-name">Netteté</span> accentuation des contours</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Transformation</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Rotation</span> orientation de l'image</div>
+                                <div class="guide-item"><span class="tool-name">Échelle</span> taille de l'image</div>
+                                <div class="guide-item"><span class="tool-name">Miroir H</span> inversion horizontale</div>
+                                <div class="guide-item"><span class="tool-name">Miroir V</span> inversion verticale</div>
+                                <div class="guide-item"><span class="tool-name">Recadrer</span> sélection zone visible</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Vitesse</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">0.25x - 4x</span> multiplicateur de vitesse</div>
+                                <div class="guide-item"><span class="tool-name">Inverser</span> lecture en arrière</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Export</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">MP4</span> format universel H.264</div>
+                                <div class="guide-item"><span class="tool-name">WebM</span> format web VP9</div>
+                                <div class="guide-item"><span class="tool-name">MOV</span> format Apple</div>
+                                <div class="guide-item"><span class="tool-name">GIF</span> animation courte sans son</div>
+                                <div class="guide-item"><span class="tool-name">MP3</span> audio compressé</div>
+                                <div class="guide-item"><span class="tool-name">WAV</span> audio non compressé</div>
+                                <div class="guide-item"><span class="tool-name">4K / 1080p / 720p / 480p</span> résolutions disponibles</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Pistes</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Vidéo 1-2</span> pistes superposées</div>
+                                <div class="guide-item"><span class="tool-name">Audio 1-3</span> pistes audio indépendantes</div>
+                                <div class="guide-item"><span class="tool-name">Œil</span> visibilité de la piste</div>
+                                <div class="guide-item"><span class="tool-name">Cadenas</span> verrouillage de la piste</div>
+                                <div class="guide-item"><span class="tool-name">Solo</span> écoute isolée</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-section">
+                            <h4>Projet</h4>
+                            <div class="guide-list">
+                                <div class="guide-item"><span class="tool-name">Nouveau</span> réinitialiser le projet</div>
+                                <div class="guide-item"><span class="tool-name">Sauvegarder</span> export JSON du projet</div>
+                                <div class="guide-item"><span class="tool-name">Charger</span> import projet existant</div>
+                            </div>
                         </div>
                     </div>
                 </div>

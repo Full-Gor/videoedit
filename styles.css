@@ -1419,6 +1419,78 @@ input[type="range"]::-moz-range-thumb {
     display: flex;
 }
 
+/* Guide Panel */
+.guide-content {
+    padding: 0;
+}
+
+.guide-section {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.guide-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.guide-section h4 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    margin-bottom: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.guide-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.guide-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+.guide-item .key {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.68rem;
+    border: 1px solid var(--border-color);
+    white-space: nowrap;
+    min-width: fit-content;
+}
+
+.guide-item .tool-name {
+    color: var(--text-primary);
+    font-weight: 500;
+    min-width: 90px;
+    flex-shrink: 0;
+}
+
+#guide-panel {
+    padding: 0.75rem;
+}
+
+#guide-panel .guide-section h4 {
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    padding: 0.25rem 0;
+    margin: 0 0 0.5rem 0;
+    z-index: 1;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
     .left-panel {
