@@ -555,6 +555,16 @@ body {
     background: #ff6b7a;
 }
 
+.control-btn.play-btn.playing {
+    background: var(--success);
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
 .volume-control {
     display: flex;
     align-items: center;

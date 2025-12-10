@@ -669,12 +669,25 @@ class VideoEditor {
     }
 
     previewMedia(media) {
+        if (media.compatible === false) {
+            this.showToast('Ce fichier nécessite une conversion. Cliquez sur le bouton de conversion.', 'warning');
+            return;
+        }
+
         if (media.type === 'video') {
             this.previewVideo.src = media.url;
             this.previewVideo.style.display = 'block';
             this.previewCanvas.style.display = 'none';
+            this.currentTime = 0;
+            this.previewVideo.currentTime = 0;
+            this.updatePlayhead();
+            this.showToast('Vidéo chargée. Appuyez sur Espace pour lire ou double-cliquez pour ajouter à la timeline.', 'info');
         } else if (media.type === 'audio') {
             this.previewVideo.src = media.url;
+            this.currentTime = 0;
+            this.previewVideo.currentTime = 0;
+            this.updatePlayhead();
+            this.showToast('Audio chargé. Appuyez sur Espace pour lire.', 'info');
         }
     }
 
@@ -713,7 +726,23 @@ class VideoEditor {
         this.saveToHistory();
         this.renderAllClips();
         this.updateDuration();
-        this.showToast(`${media.name} ajouté à la timeline`, 'success');
+
+        // Automatically load video in preview for immediate playback
+        if (media.type === 'video' || media.type === 'audio') {
+            this.previewVideo.src = media.url;
+            this.previewVideo.style.display = 'block';
+            this.previewCanvas.style.display = 'none';
+            this.currentTime = 0;
+            this.previewVideo.currentTime = 0;
+            this.updatePlayhead();
+        }
+
+        // Auto-select the clip
+        this.selectedClip = clip;
+        this.selectedClip._trackId = trackId;
+        this.renderAllClips();
+
+        this.showToast(`${media.name} ajouté à la timeline. Appuyez sur Espace ou cliquez Play pour lire.`, 'success');
     }
 
     renderTimeRuler() {
@@ -882,6 +911,18 @@ class VideoEditor {
         return this.tracks[trackId].find(c => c.id === clipId);
     }
 
+    findClipAtTime(time) {
+        // Search all tracks for a clip at the given time
+        for (const trackId of Object.keys(this.tracks)) {
+            for (const clip of this.tracks[trackId]) {
+                if (time >= clip.startTime && time <= clip.startTime + clip.duration) {
+                    return { clip, trackId };
+                }
+            }
+        }
+        return null;
+    }
+
     selectClip(clipId, trackId) {
         this.selectedClip = this.findClip(clipId, trackId);
         this.selectedClip._trackId = trackId;
@@ -892,9 +933,24 @@ class VideoEditor {
 
     // 1. COUPER
     splitClip() {
-        if (!this.selectedClip) {
-            this.showToast('Sélectionnez un clip à diviser', 'warning');
+        // Check if timeline has any clips
+        const hasClips = Object.values(this.tracks).some(track => track.length > 0);
+        if (!hasClips) {
+            this.showToast('Timeline vide. Double-cliquez sur un média pour l\'ajouter à la timeline.', 'warning');
             return;
+        }
+
+        if (!this.selectedClip) {
+            // Try to find a clip at current playhead position
+            const clipAtPlayhead = this.findClipAtTime(this.currentTime);
+            if (clipAtPlayhead) {
+                this.selectedClip = clipAtPlayhead.clip;
+                this.selectedClip._trackId = clipAtPlayhead.trackId;
+                this.renderAllClips();
+            } else {
+                this.showToast('Cliquez sur un clip dans la timeline pour le sélectionner, puis positionnez la tête de lecture où vous voulez couper.', 'warning');
+                return;
+            }
         }
 
         const clip = this.selectedClip;
@@ -903,7 +959,7 @@ class VideoEditor {
         const splitTime = this.currentTime;
 
         if (splitTime <= clip.startTime || splitTime >= clip.startTime + clip.duration) {
-            this.showToast('Placez la tête de lecture sur le clip', 'warning');
+            this.showToast('Déplacez la tête de lecture (barre rouge) sur le clip sélectionné à l\'endroit où vous voulez couper.', 'warning');
             return;
         }
 
@@ -1074,6 +1130,12 @@ class VideoEditor {
     // ==================== PLAYBACK ====================
 
     togglePlayPause() {
+        // Check if video has a source
+        if (!this.previewVideo.src || this.previewVideo.src === window.location.href) {
+            this.showToast('Chargez d\'abord une vidéo. Double-cliquez sur un média de la bibliothèque pour l\'ajouter à la timeline.', 'warning');
+            return;
+        }
+
         if (this.isPlaying) {
             this.pause();
         } else {
@@ -1082,16 +1144,32 @@ class VideoEditor {
     }
 
     play() {
+        if (!this.previewVideo.src || this.previewVideo.src === window.location.href) {
+            this.showToast('Aucune vidéo chargée', 'warning');
+            return;
+        }
+
         this.isPlaying = true;
         this.playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        this.playBtn.classList.add('playing');
         this.previewVideo.playbackRate = this.playbackSpeed;
-        this.previewVideo.play();
+
+        const playPromise = this.previewVideo.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(error => {
+                console.error('Erreur de lecture:', error);
+                this.pause();
+                this.showToast('Erreur de lecture vidéo', 'error');
+            });
+        }
+
         this.animatePlayhead();
     }
 
     pause() {
         this.isPlaying = false;
         this.playBtn.innerHTML = '<i class="fas fa-play"></i>';
+        this.playBtn.classList.remove('playing');
         this.previewVideo.pause();
     }
 
