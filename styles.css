@@ -277,6 +277,28 @@ body {
     opacity: 0.8;
 }
 
+.media-item.incompatible {
+    opacity: 0.6;
+    border-color: var(--warning);
+}
+
+.media-item.incompatible:hover {
+    border-color: var(--warning);
+}
+
+.incompatible-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 193, 7, 0.9);
+    color: #000;
+    padding: 0.5rem;
+    border-radius: 50%;
+    font-size: 1rem;
+    z-index: 5;
+}
+
 /* Center Panel - Preview */
 .center-panel {
     flex: 1;

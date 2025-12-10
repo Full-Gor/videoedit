@@ -390,9 +390,21 @@ class VideoEditor {
     }
 
     getFileType(file) {
+        // Check MIME type first
         if (file.type.startsWith('video/')) return 'video';
         if (file.type.startsWith('audio/')) return 'audio';
         if (file.type.startsWith('image/')) return 'image';
+
+        // Fallback to extension for formats not always recognized
+        const ext = file.name.split('.').pop().toLowerCase();
+        const videoExtensions = ['avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', 'mp4', 'm4v', 'ogv', '3gp'];
+        const audioExtensions = ['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a', 'wma'];
+        const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+
+        if (videoExtensions.includes(ext)) return 'video';
+        if (audioExtensions.includes(ext)) return 'audio';
+        if (imageExtensions.includes(ext)) return 'image';
+
         return null;
     }
 
@@ -406,16 +418,32 @@ class VideoEditor {
             type,
             url,
             file,
-            duration: 0
+            duration: 0,
+            compatible: true
         };
 
         // Get duration for video/audio
         if (type === 'video' || type === 'audio') {
             const el = document.createElement(type);
             el.src = url;
+
             el.addEventListener('loadedmetadata', () => {
                 media.duration = el.duration;
+                media.compatible = true;
                 this.renderMediaLibrary();
+            });
+
+            el.addEventListener('error', () => {
+                const ext = file.name.split('.').pop().toLowerCase();
+                media.compatible = false;
+                media.duration = 0;
+                this.renderMediaLibrary();
+
+                if (['avi', 'wmv', 'mkv', 'flv'].includes(ext)) {
+                    this.showToast(`${file.name} : codec non supporté par le navigateur. Convertissez en MP4 ou WebM.`, 'warning');
+                } else {
+                    this.showToast(`${file.name} : format non lisible`, 'error');
+                }
             });
         } else {
             media.duration = 5; // Default 5 seconds for images
@@ -443,24 +471,29 @@ class VideoEditor {
         }
 
         this.mediaLibraryEl.innerHTML = filtered.map(media => {
+            const incompatibleClass = media.compatible === false ? 'incompatible' : '';
+            const incompatibleIcon = media.compatible === false ? '<div class="incompatible-icon" title="Codec non supporté"><i class="fas fa-exclamation-triangle"></i></div>' : '';
+
             if (media.type === 'video') {
                 return `
-                    <div class="media-item" data-id="${media.id}" draggable="true">
+                    <div class="media-item ${incompatibleClass}" data-id="${media.id}" draggable="true">
                         <video src="${media.url}" muted></video>
                         <div class="media-type-icon"><i class="fas fa-video"></i></div>
+                        ${incompatibleIcon}
                         <div class="media-info">
                             <div class="media-name">${media.name}</div>
-                            <div class="media-duration">${this.formatTime(media.duration)}</div>
+                            <div class="media-duration">${media.compatible === false ? 'Non lisible' : this.formatTime(media.duration)}</div>
                         </div>
                     </div>
                 `;
             } else if (media.type === 'audio') {
                 return `
-                    <div class="media-item audio-item" data-id="${media.id}" draggable="true">
+                    <div class="media-item audio-item ${incompatibleClass}" data-id="${media.id}" draggable="true">
                         <i class="fas fa-music"></i>
+                        ${incompatibleIcon}
                         <div class="media-info">
                             <div class="media-name">${media.name}</div>
-                            <div class="media-duration">${this.formatTime(media.duration)}</div>
+                            <div class="media-duration">${media.compatible === false ? 'Non lisible' : this.formatTime(media.duration)}</div>
                         </div>
                     </div>
                 `;
