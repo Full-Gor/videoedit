@@ -333,6 +333,11 @@ class VideoEditor {
         // Export
         document.getElementById('start-export').addEventListener('click', () => this.startExport());
 
+        // Convert options
+        document.querySelectorAll('.convert-option-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.convertMedia(btn.dataset.format));
+        });
+
         // Context Menu
         document.addEventListener('contextmenu', (e) => {
             if (e.target.closest('.clip')) {
@@ -473,6 +478,8 @@ class VideoEditor {
         this.mediaLibraryEl.innerHTML = filtered.map(media => {
             const incompatibleClass = media.compatible === false ? 'incompatible' : '';
             const incompatibleIcon = media.compatible === false ? '<div class="incompatible-icon" title="Codec non supporté"><i class="fas fa-exclamation-triangle"></i></div>' : '';
+            const convertBtn = media.compatible === false ? `<button class="convert-btn" data-id="${media.id}" title="Convertir en MP4"><i class="fas fa-sync-alt"></i></button>` : '';
+            const deleteBtn = `<button class="delete-media-btn" data-id="${media.id}" title="Supprimer"><i class="fas fa-times"></i></button>`;
 
             if (media.type === 'video') {
                 return `
@@ -480,6 +487,8 @@ class VideoEditor {
                         <video src="${media.url}" muted></video>
                         <div class="media-type-icon"><i class="fas fa-video"></i></div>
                         ${incompatibleIcon}
+                        ${deleteBtn}
+                        ${convertBtn}
                         <div class="media-info">
                             <div class="media-name">${media.name}</div>
                             <div class="media-duration">${media.compatible === false ? 'Non lisible' : this.formatTime(media.duration)}</div>
@@ -491,6 +500,8 @@ class VideoEditor {
                     <div class="media-item audio-item ${incompatibleClass}" data-id="${media.id}" draggable="true">
                         <i class="fas fa-music"></i>
                         ${incompatibleIcon}
+                        ${deleteBtn}
+                        ${convertBtn}
                         <div class="media-info">
                             <div class="media-name">${media.name}</div>
                             <div class="media-duration">${media.compatible === false ? 'Non lisible' : this.formatTime(media.duration)}</div>
@@ -502,6 +513,7 @@ class VideoEditor {
                     <div class="media-item" data-id="${media.id}" draggable="true">
                         <img src="${media.url}" alt="${media.name}">
                         <div class="media-type-icon"><i class="fas fa-image"></i></div>
+                        ${deleteBtn}
                         <div class="media-info">
                             <div class="media-name">${media.name}</div>
                         </div>
@@ -523,12 +535,132 @@ class VideoEditor {
                 e.dataTransfer.setData('mediaId', item.dataset.id);
             });
 
-            item.addEventListener('click', () => {
+            item.addEventListener('click', (e) => {
+                if (e.target.closest('.delete-media-btn') || e.target.closest('.convert-btn')) return;
                 const media = this.mediaLibrary.find(m => m.id == item.dataset.id);
                 if (media && (media.type === 'video' || media.type === 'audio')) {
                     this.previewMedia(media);
                 }
             });
+        });
+
+        // Delete media buttons
+        this.mediaLibraryEl.querySelectorAll('.delete-media-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.deleteFromMediaLibrary(parseFloat(btn.dataset.id));
+            });
+        });
+
+        // Convert buttons
+        this.mediaLibraryEl.querySelectorAll('.convert-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showConvertModal(parseFloat(btn.dataset.id));
+            });
+        });
+    }
+
+    deleteFromMediaLibrary(mediaId) {
+        const media = this.mediaLibrary.find(m => m.id === mediaId);
+        if (!media) return;
+
+        // Revoke object URL to free memory
+        if (media.url) {
+            URL.revokeObjectURL(media.url);
+        }
+
+        // Remove from library
+        this.mediaLibrary = this.mediaLibrary.filter(m => m.id !== mediaId);
+        this.renderMediaLibrary();
+        this.showToast(`${media.name} supprimé de la médiathèque`, 'success');
+    }
+
+    showConvertModal(mediaId) {
+        const media = this.mediaLibrary.find(m => m.id === mediaId);
+        if (!media) return;
+
+        // For now, show info about conversion limitations
+        this.showToast('Conversion navigateur limitée. Utilisez FFmpeg ou HandBrake pour convertir en MP4.', 'warning');
+
+        // Open convert modal
+        this.convertMediaId = mediaId;
+        document.getElementById('convert-modal').classList.add('active');
+    }
+
+    async convertMedia(format) {
+        const media = this.mediaLibrary.find(m => m.id === this.convertMediaId);
+        if (!media) return;
+
+        this.showToast(`Conversion de ${media.name} en cours...`, 'info');
+
+        try {
+            // Check if MediaRecorder is available for the format
+            const mimeType = format === 'mp4' ? 'video/mp4' :
+                            format === 'webm' ? 'video/webm' :
+                            format === 'mp3' ? 'audio/mp3' : 'video/webm';
+
+            if (media.type === 'video' && media.compatible !== false) {
+                // For compatible videos, we can use canvas + MediaRecorder
+                await this.convertVideoWithCanvas(media, format);
+            } else {
+                this.showToast('Ce fichier nécessite un outil externe (FFmpeg, HandBrake)', 'warning');
+            }
+        } catch (error) {
+            this.showToast('Erreur de conversion: ' + error.message, 'error');
+        }
+
+        this.closeAllModals();
+    }
+
+    async convertVideoWithCanvas(media, format) {
+        const video = document.createElement('video');
+        video.src = media.url;
+        video.muted = true;
+
+        await new Promise(resolve => {
+            video.addEventListener('loadedmetadata', resolve);
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+
+        const mimeType = format === 'webm' ? 'video/webm;codecs=vp9' : 'video/webm';
+        const stream = canvas.captureStream(30);
+        const recorder = new MediaRecorder(stream, { mimeType });
+        const chunks = [];
+
+        recorder.ondataavailable = (e) => chunks.push(e.data);
+        recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = media.name.replace(/\.[^.]+$/, '') + '.' + (format === 'webm' ? 'webm' : 'webm');
+            a.click();
+            URL.revokeObjectURL(url);
+            this.showToast('Conversion terminée', 'success');
+        };
+
+        recorder.start();
+        video.play();
+
+        const drawFrame = () => {
+            if (video.ended || video.paused) {
+                recorder.stop();
+                return;
+            }
+            ctx.drawImage(video, 0, 0);
+            requestAnimationFrame(drawFrame);
+        };
+
+        drawFrame();
+
+        // Stop after video ends
+        video.addEventListener('ended', () => {
+            recorder.stop();
         });
     }
 

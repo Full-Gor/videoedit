@@ -299,6 +299,123 @@ body {
     z-index: 5;
 }
 
+.delete-media-btn {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    background: rgba(255, 71, 87, 0.9);
+    color: white;
+    border: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 10;
+}
+
+.media-item:hover .delete-media-btn {
+    opacity: 1;
+}
+
+.delete-media-btn:hover {
+    background: var(--error);
+    transform: scale(1.1);
+}
+
+.convert-btn {
+    position: absolute;
+    bottom: 2rem;
+    right: 0.25rem;
+    background: rgba(102, 126, 234, 0.9);
+    color: white;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: var(--transition);
+}
+
+.convert-btn:hover {
+    background: var(--accent-primary);
+    transform: scale(1.1);
+}
+
+/* Convert Modal */
+.convert-info {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.convert-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.convert-option-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.convert-option-btn:hover {
+    border-color: var(--accent-primary);
+    background: var(--accent-secondary);
+}
+
+.convert-option-btn .format-name {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.convert-option-btn .format-desc {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.convert-note {
+    background: var(--bg-tertiary);
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.convert-note p {
+    margin: 0.25rem 0;
+}
+
+.convert-note a {
+    color: var(--accent-primary);
+    text-decoration: none;
+}
+
+.convert-note a:hover {
+    text-decoration: underline;
+}
+
 /* Center Panel - Preview */
 .center-panel {
     flex: 1;

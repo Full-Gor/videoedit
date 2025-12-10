@@ -849,6 +849,37 @@
         </div>
     </div>
 
+    <!-- Convert Modal -->
+    <div class="modal" id="convert-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Convertir le fichier</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="convert-info">Sélectionnez le format de sortie :</p>
+                <div class="convert-options">
+                    <button class="convert-option-btn" data-format="webm">
+                        <span class="format-name">WebM</span>
+                        <span class="format-desc">Compatible navigateur</span>
+                    </button>
+                    <button class="convert-option-btn" data-format="mp4">
+                        <span class="format-name">MP4</span>
+                        <span class="format-desc">Télécharger FFmpeg requis</span>
+                    </button>
+                    <button class="convert-option-btn" data-format="mp3">
+                        <span class="format-name">MP3</span>
+                        <span class="format-desc">Audio uniquement</span>
+                    </button>
+                </div>
+                <div class="convert-note">
+                    <p>Note : La conversion dans le navigateur est limitée au format WebM.</p>
+                    <p>Pour MP4/MP3, utilisez <a href="https://handbrake.fr/" target="_blank">HandBrake</a> ou <a href="https://ffmpeg.org/" target="_blank">FFmpeg</a>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Crop Modal -->
     <div class="modal" id="crop-modal">
         <div class="modal-content">
