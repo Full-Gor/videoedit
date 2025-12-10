@@ -430,6 +430,8 @@ body {
     display: flex;
     flex-direction: column;
     padding: 1rem;
+    overflow: hidden;
+    min-height: 0;
 }
 
 .preview-header {
@@ -452,6 +454,8 @@ body {
 
 .preview-wrapper {
     flex: 1;
+    min-height: 0;
+    max-height: calc(100% - 80px);
     background: #000;
     border-radius: var(--radius);
     overflow: hidden;
@@ -465,11 +469,15 @@ body {
     max-width: 100%;
     max-height: 100%;
     display: none;
+    object-fit: contain;
 }
 
 #preview-video {
     max-width: 100%;
     max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
 }
 
 .text-overlays,
@@ -523,6 +531,9 @@ body {
     background: var(--bg-secondary);
     border-radius: var(--radius);
     margin-top: 0.5rem;
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
 }
 
 .control-btn {
