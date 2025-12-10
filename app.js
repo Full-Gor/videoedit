@@ -1130,9 +1130,11 @@ class VideoEditor {
     // ==================== PLAYBACK ====================
 
     togglePlayPause() {
-        // Check if video has a source
-        if (!this.previewVideo.src || this.previewVideo.src === window.location.href) {
-            this.showToast('Chargez d\'abord une vidéo. Double-cliquez sur un média de la bibliothèque pour l\'ajouter à la timeline.', 'warning');
+        // Check if timeline has clips
+        const hasClips = Object.values(this.tracks).some(track => track.length > 0);
+
+        if (!hasClips) {
+            this.showToast('Ajoutez d\'abord une vidéo à la timeline (double-clic sur un média).', 'warning');
             return;
         }
 
@@ -1144,26 +1146,19 @@ class VideoEditor {
     }
 
     play() {
-        if (!this.previewVideo.src || this.previewVideo.src === window.location.href) {
-            this.showToast('Aucune vidéo chargée', 'warning');
+        const hasClips = Object.values(this.tracks).some(track => track.length > 0);
+        if (!hasClips) {
+            this.showToast('Aucun clip dans la timeline', 'warning');
             return;
         }
 
         this.isPlaying = true;
         this.playBtn.innerHTML = '<i class="fas fa-pause"></i>';
         this.playBtn.classList.add('playing');
-        this.previewVideo.playbackRate = this.playbackSpeed;
 
-        const playPromise = this.previewVideo.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(error => {
-                console.error('Erreur de lecture:', error);
-                this.pause();
-                this.showToast('Erreur de lecture vidéo', 'error');
-            });
-        }
-
-        this.animatePlayhead();
+        // Start timeline playback
+        this.lastFrameTime = performance.now();
+        this.playTimeline();
     }
 
     pause() {
@@ -1173,12 +1168,66 @@ class VideoEditor {
         this.previewVideo.pause();
     }
 
-    animatePlayhead() {
+    playTimeline() {
         if (!this.isPlaying) return;
 
+        const now = performance.now();
+        const delta = (now - this.lastFrameTime) / 1000 * this.playbackSpeed;
+        this.lastFrameTime = now;
+
+        this.currentTime += delta;
+
+        // Find the clip at current timeline position
+        const clipInfo = this.findClipAtTime(this.currentTime);
+
+        if (clipInfo) {
+            const { clip, trackId } = clipInfo;
+
+            // Calculate position within the clip
+            const clipOffset = this.currentTime - clip.startTime;
+            const videoTime = clip.inPoint + clipOffset;
+
+            // Load correct video if needed
+            if (this.previewVideo.src !== clip.url) {
+                this.previewVideo.src = clip.url;
+                this.previewVideo.style.display = 'block';
+                this.previewCanvas.style.display = 'none';
+            }
+
+            // Sync video time
+            if (Math.abs(this.previewVideo.currentTime - videoTime) > 0.1) {
+                this.previewVideo.currentTime = videoTime;
+            }
+
+            // Play if paused
+            if (this.previewVideo.paused) {
+                this.previewVideo.playbackRate = this.playbackSpeed;
+                this.previewVideo.play().catch(() => {});
+            }
+        } else {
+            // No clip at this position, pause the video
+            if (!this.previewVideo.paused) {
+                this.previewVideo.pause();
+            }
+        }
+
+        // Check if we reached the end
+        if (this.currentTime >= this.duration) {
+            this.currentTime = 0;
+            this.pause();
+            this.updatePlayhead();
+            return;
+        }
+
+        this.updatePlayhead();
+        requestAnimationFrame(() => this.playTimeline());
+    }
+
+    animatePlayhead() {
+        // Deprecated - now using playTimeline()
+        if (!this.isPlaying) return;
         this.currentTime = this.previewVideo.currentTime;
         this.updatePlayhead();
-
         requestAnimationFrame(() => this.animatePlayhead());
     }
 
@@ -1212,8 +1261,23 @@ class VideoEditor {
     seekToPosition(e) {
         const rect = this.timeRuler.getBoundingClientRect();
         const x = e.clientX - rect.left + this.timeRuler.parentElement.scrollLeft;
-        this.currentTime = x / this.pixelsPerSecond;
-        this.previewVideo.currentTime = this.currentTime;
+        this.currentTime = Math.max(0, x / this.pixelsPerSecond);
+
+        // Find clip at this position and sync video
+        const clipInfo = this.findClipAtTime(this.currentTime);
+        if (clipInfo) {
+            const { clip } = clipInfo;
+            const clipOffset = this.currentTime - clip.startTime;
+            const videoTime = clip.inPoint + clipOffset;
+
+            if (this.previewVideo.src !== clip.url) {
+                this.previewVideo.src = clip.url;
+                this.previewVideo.style.display = 'block';
+                this.previewCanvas.style.display = 'none';
+            }
+            this.previewVideo.currentTime = videoTime;
+        }
+
         this.updatePlayhead();
     }
 
@@ -1857,7 +1921,7 @@ class VideoEditor {
         this.showToast('Nouveau projet créé', 'success');
     }
 
-    saveProject() {
+    async saveProject() {
         const project = {
             mediaLibrary: this.mediaLibrary.map(m => ({...m, url: null, file: null})),
             tracks: this.tracks,
@@ -1868,13 +1932,34 @@ class VideoEditor {
 
         const json = JSON.stringify(project, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
 
+        // Try File System Access API
+        if ('showSaveFilePicker' in window) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: 'videoedit-project.json',
+                    types: [{
+                        description: 'Project File',
+                        accept: { 'application/json': ['.json'] }
+                    }]
+                });
+
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                this.showToast('Projet sauvegardé', 'success');
+                return;
+            } catch (err) {
+                if (err.name === 'AbortError') return; // User cancelled
+            }
+        }
+
+        // Fallback
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = 'videoedit-project.json';
         a.click();
-
         URL.revokeObjectURL(url);
         this.showToast('Projet sauvegardé', 'success');
     }
@@ -1919,25 +2004,171 @@ class VideoEditor {
         const quality = document.getElementById('export-quality').value;
         const fps = parseInt(document.getElementById('export-fps').value);
 
+        // Check if we have clips
+        const allClips = [];
+        Object.keys(this.tracks).forEach(trackId => {
+            this.tracks[trackId].forEach(clip => {
+                if (clip.type === 'video') {
+                    allClips.push({ ...clip, trackId });
+                }
+            });
+        });
+
+        if (allClips.length === 0) {
+            this.showToast('Aucun clip vidéo à exporter', 'warning');
+            return;
+        }
+
+        // Sort by start time
+        allClips.sort((a, b) => a.startTime - b.startTime);
+
         document.getElementById('export-progress').style.display = 'block';
+        this.showToast('Préparation de l\'export...', 'info');
 
-        // Simulate export progress
-        for (let i = 0; i <= 100; i += 5) {
-            await new Promise(r => setTimeout(r, 100));
-            document.getElementById('progress-fill').style.width = i + '%';
-            document.getElementById('progress-text').textContent = i + '%';
+        try {
+            // Get resolution dimensions
+            const resolutions = {
+                '4k': { width: 3840, height: 2160 },
+                '1080p': { width: 1920, height: 1080 },
+                '720p': { width: 1280, height: 720 },
+                '480p': { width: 854, height: 480 }
+            };
+            const res = resolutions[resolution] || resolutions['1080p'];
+
+            // Create canvas for rendering
+            const canvas = document.createElement('canvas');
+            canvas.width = res.width;
+            canvas.height = res.height;
+            const ctx = canvas.getContext('2d');
+
+            // Setup MediaRecorder
+            const stream = canvas.captureStream(fps);
+            const mimeType = format === 'webm' ? 'video/webm;codecs=vp9' : 'video/webm';
+            const recorder = new MediaRecorder(stream, {
+                mimeType,
+                videoBitsPerSecond: quality === 'high' ? 8000000 : quality === 'medium' ? 4000000 : 2000000
+            });
+
+            const chunks = [];
+            recorder.ondataavailable = (e) => chunks.push(e.data);
+
+            // Create promise for export completion
+            const exportPromise = new Promise((resolve) => {
+                recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
+            });
+
+            recorder.start();
+
+            // Process each clip
+            let currentProgress = 0;
+            const totalDuration = this.duration;
+
+            for (const clip of allClips) {
+                // Create temporary video for this clip
+                const tempVideo = document.createElement('video');
+                tempVideo.src = clip.url;
+                tempVideo.muted = true;
+
+                await new Promise(resolve => {
+                    tempVideo.onloadedmetadata = resolve;
+                });
+
+                // Set to clip's in point
+                tempVideo.currentTime = clip.inPoint;
+
+                await new Promise(resolve => {
+                    tempVideo.onseeked = resolve;
+                });
+
+                // Render frames for this clip
+                const clipDuration = clip.duration;
+                const frameTime = 1 / fps;
+                let clipTime = 0;
+
+                while (clipTime < clipDuration) {
+                    // Draw frame
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    // Scale video to fit canvas
+                    const scale = Math.min(canvas.width / tempVideo.videoWidth, canvas.height / tempVideo.videoHeight);
+                    const x = (canvas.width - tempVideo.videoWidth * scale) / 2;
+                    const y = (canvas.height - tempVideo.videoHeight * scale) / 2;
+                    ctx.drawImage(tempVideo, x, y, tempVideo.videoWidth * scale, tempVideo.videoHeight * scale);
+
+                    // Apply filters if any
+                    if (this.currentFilters.filter !== 'none') {
+                        ctx.filter = this.previewVideo.style.filter || 'none';
+                    }
+
+                    // Update progress
+                    currentProgress = ((clip.startTime + clipTime) / totalDuration) * 100;
+                    document.getElementById('progress-fill').style.width = currentProgress + '%';
+                    document.getElementById('progress-text').textContent = Math.round(currentProgress) + '%';
+
+                    // Advance video
+                    clipTime += frameTime;
+                    tempVideo.currentTime = clip.inPoint + clipTime;
+
+                    await new Promise(r => setTimeout(r, frameTime * 100)); // Speed up export
+                }
+            }
+
+            recorder.stop();
+            const blob = await exportPromise;
+
+            // Try to use File System Access API for save dialog
+            await this.saveExportedFile(blob, format);
+
+            document.getElementById('progress-fill').style.width = '100%';
+            document.getElementById('progress-text').textContent = '100%';
+            this.showToast('Export terminé!', 'success');
+
+        } catch (error) {
+            console.error('Export error:', error);
+            this.showToast('Erreur lors de l\'export: ' + error.message, 'error');
         }
 
-        // In a real implementation, we'd use MediaRecorder API
-        if (this.previewVideo.src) {
-            const a = document.createElement('a');
-            a.href = this.previewVideo.src;
-            a.download = `export.${format}`;
-            a.click();
-        }
-
-        this.showToast('Export terminé!', 'success');
         this.closeAllModals();
+    }
+
+    async saveExportedFile(blob, format) {
+        const extension = format === 'gif' ? 'gif' : format === 'mp3' || format === 'wav' ? format : 'webm';
+        const filename = `videoedit-export-${Date.now()}.${extension}`;
+
+        // Try File System Access API (allows choosing save location)
+        if ('showSaveFilePicker' in window) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: filename,
+                    types: [{
+                        description: 'Video File',
+                        accept: {
+                            'video/webm': ['.webm'],
+                            'video/mp4': ['.mp4']
+                        }
+                    }]
+                });
+
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                return;
+            } catch (err) {
+                // User cancelled or API not supported, fall back to download
+                if (err.name !== 'AbortError') {
+                    console.warn('File System Access API failed:', err);
+                }
+            }
+        }
+
+        // Fallback: regular download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 
     // ==================== HISTORY ====================
