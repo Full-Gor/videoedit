@@ -1651,23 +1651,667 @@ input[type="range"]::-moz-range-thumb {
     z-index: 1;
 }
 
-/* Responsive */
+/* ==================== RESPONSIVE DESIGN ==================== */
+
+/* Tablet Landscape (1200px and below) */
 @media (max-width: 1200px) {
     .left-panel {
-        width: 240px;
+        width: 220px;
     }
     .right-panel {
         width: 280px;
     }
+    .guide-item .tool-name {
+        min-width: 80px;
+    }
 }
 
+/* Tablet Portrait (992px and below) */
 @media (max-width: 992px) {
+    .app-container {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .header {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .main-nav {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .nav-btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.75rem;
+    }
+
     .main-content {
         flex-direction: column;
+        height: auto;
     }
-    .left-panel,
+
+    .left-panel {
+        width: 100%;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .media-library {
+        max-height: 150px;
+    }
+
+    .center-panel {
+        width: 100%;
+    }
+
     .right-panel {
         width: 100%;
-        max-height: 200px;
+        max-height: none;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .tools-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .tools-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tool-panel {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .timeline-container {
+        position: relative;
+    }
+
+    .timeline-toolbar {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .timeline-actions {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .zoom-controls {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Mobile Large (768px and below) */
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+
+    .header {
+        padding: 0.4rem;
+    }
+
+    .logo {
+        font-size: 1rem;
+    }
+
+    .logo i {
+        font-size: 1.2rem;
+    }
+
+    .nav-btn {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.7rem;
+    }
+
+    .nav-btn span {
+        display: none;
+    }
+
+    .panel-header {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .panel-header h3 {
+        font-size: 0.85rem;
+    }
+
+    .import-btn {
+        padding: 0.35rem 0.6rem;
+        font-size: 0.75rem;
+    }
+
+    .media-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .media-tabs .tab-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.7rem;
+        white-space: nowrap;
+    }
+
+    .media-library {
+        max-height: 120px;
+        padding: 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .media-item {
+        width: 80px;
+        height: 60px;
+    }
+
+    .media-info .media-name {
+        font-size: 0.6rem;
+    }
+
+    .preview-container {
+        padding: 0.5rem;
+    }
+
+    .preview-header {
+        margin-bottom: 0.25rem;
+    }
+
+    .preview-controls {
+        padding: 0.5rem;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+    }
+
+    .control-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .control-btn.play-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .volume-control {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+        margin-top: 0.5rem;
+    }
+
+    .tools-tabs .tool-tab {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.7rem;
+    }
+
+    .tool-section h4 {
+        font-size: 0.8rem;
+    }
+
+    .effects-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.35rem;
+    }
+
+    .effect-btn {
+        padding: 0.4rem 0.3rem;
+        font-size: 0.65rem;
+    }
+
+    .filters-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .filter-btn {
+        padding: 0.4rem;
+        font-size: 0.65rem;
+    }
+
+    .control-row label {
+        font-size: 0.7rem;
+    }
+
+    .control-row select,
+    .control-row input[type="color"] {
+        height: 32px;
+    }
+
+    .action-btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.7rem;
+    }
+
+    .bubble-styles {
+        gap: 0.25rem;
+    }
+
+    .bubble-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .gradient-presets {
+        gap: 0.25rem;
+    }
+
+    .gradient-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .equalizer {
+        gap: 0.5rem;
+    }
+
+    .eq-band span {
+        font-size: 0.55rem;
+    }
+
+    .speed-presets {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .speed-btn {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.7rem;
+    }
+
+    .timeline-toolbar {
+        padding: 0.5rem;
+    }
+
+    .timeline-tools {
+        gap: 0.25rem;
+    }
+
+    .timeline-tool {
+        width: 32px;
+        height: 32px;
+    }
+
+    .timeline-actions {
+        gap: 0.25rem;
+    }
+
+    .timeline-actions .action-btn {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.65rem;
+    }
+
+    .timeline-actions .action-btn i {
+        margin-right: 0;
+    }
+
+    .timeline-actions .action-btn span:not(.sr-only) {
+        display: none;
+    }
+
+    .zoom-controls {
+        gap: 0.25rem;
+    }
+
+    .zoom-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    #timeline-zoom {
+        width: 80px;
+    }
+
+    .track-headers {
+        width: 80px;
+        min-width: 80px;
+    }
+
+    .track-header {
+        padding: 0 0.25rem;
+        font-size: 0.6rem;
+    }
+
+    .track-header span i {
+        display: none;
+    }
+
+    .track-controls {
+        display: none;
+    }
+
+    .track {
+        height: 35px;
+    }
+
+    .clip {
+        font-size: 0.6rem;
+        padding: 0 0.25rem;
+    }
+
+    .clip .clip-duration {
+        display: none;
+    }
+
+    .time-ruler {
+        height: 20px;
+    }
+
+    .time-marker {
+        font-size: 0.55rem;
+    }
+
+    /* Modal responsive */
+    .modal-content {
+        width: 95%;
+        max-height: 85vh;
+        margin: 0.5rem;
+    }
+
+    .modal-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .modal-header h3 {
+        font-size: 0.9rem;
+    }
+
+    .modal-body {
+        padding: 1rem;
+    }
+
+    .modal-footer {
+        padding: 0.75rem 1rem;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+
+    .export-options select {
+        width: 100%;
+    }
+
+    .help-content {
+        grid-template-columns: 1fr;
+    }
+
+    .crop-presets {
+        flex-wrap: wrap;
+    }
+
+    /* Toast responsive */
+    .toast-container {
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+    }
+
+    .toast {
+        padding: 0.75rem 1rem;
+        font-size: 0.8rem;
+    }
+
+    /* Guide responsive */
+    .guide-item {
+        font-size: 0.65rem;
+    }
+
+    .guide-item .tool-name {
+        min-width: 70px;
+        font-size: 0.65rem;
+    }
+
+    .guide-item .key {
+        font-size: 0.6rem;
+        padding: 0.1rem 0.3rem;
+    }
+
+    /* Convert modal */
+    .convert-options {
+        flex-direction: column;
+    }
+
+    .convert-option-btn {
+        width: 100%;
+    }
+}
+
+/* Mobile Small (480px and below) */
+@media (max-width: 480px) {
+    .header {
+        padding: 0.3rem;
+    }
+
+    .logo span {
+        display: none;
+    }
+
+    .main-nav {
+        gap: 0.15rem;
+    }
+
+    .nav-btn {
+        padding: 0.3rem 0.4rem;
+        font-size: 0.65rem;
+    }
+
+    .media-library {
+        max-height: 100px;
+        gap: 0.4rem;
+    }
+
+    .media-item {
+        width: 65px;
+        height: 50px;
+    }
+
+    .preview-controls {
+        padding: 0.4rem;
+    }
+
+    .control-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
+    }
+
+    .control-btn.play-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .tools-tabs {
+        gap: 0;
+    }
+
+    .tools-tabs .tool-tab {
+        padding: 0.4rem 0.5rem;
+        font-size: 0.65rem;
+    }
+
+    .tool-section {
+        padding: 0.5rem;
+    }
+
+    .tool-section h4 {
+        font-size: 0.75rem;
+    }
+
+    .effects-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .filters-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .timeline-toolbar {
+        padding: 0.4rem;
+    }
+
+    .timeline-actions {
+        display: none;
+    }
+
+    .timeline-tools {
+        width: 100%;
+        justify-content: space-around;
+    }
+
+    .zoom-controls {
+        display: none;
+    }
+
+    .track-headers {
+        width: 60px;
+        min-width: 60px;
+    }
+
+    .track-header {
+        font-size: 0.55rem;
+    }
+
+    .track {
+        height: 30px;
+    }
+
+    .modal-content {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .modal-content.large {
+        max-width: 100%;
+    }
+
+    .text-controls,
+    .border-controls,
+    .gradient-controls,
+    .bg-removal-controls,
+    .transform-controls,
+    .speed-controls {
+        gap: 0.5rem;
+    }
+
+    textarea {
+        font-size: 14px;
+    }
+
+    select {
+        font-size: 14px;
+    }
+
+    /* Touch-friendly adjustments */
+    .action-btn,
+    .effect-btn,
+    .filter-btn,
+    .speed-btn,
+    .bubble-btn,
+    .gradient-btn,
+    .timeline-tool,
+    .zoom-btn,
+    .preset-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Landscape mode on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    .app-container {
+        height: auto;
+    }
+
+    .main-content {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .left-panel {
+        display: none;
+    }
+
+    .center-panel {
+        flex: 1;
+        min-width: 50%;
+    }
+
+    .right-panel {
+        width: 40%;
+        max-height: 50vh;
+    }
+
+    .timeline-container {
+        width: 100%;
+    }
+
+    .preview-wrapper {
+        max-height: 40vh;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .clip:hover {
+        transform: none;
+    }
+
+    .nav-btn:hover,
+    .tab-btn:hover,
+    .tool-tab:hover,
+    .action-btn:hover,
+    .effect-btn:hover,
+    .filter-btn:hover {
+        transform: none;
+    }
+
+    /* Larger touch targets */
+    .clip .resize-handle {
+        width: 16px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        width: 20px;
+        height: 20px;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+    }
+
+    .context-menu button {
+        padding: 0.8rem 1rem;
+    }
+}
+
+/* High DPI screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .clip {
+        border: 0.5px solid rgba(255,255,255,0.1);
+    }
+}
+
+/* Print styles (hide app for printing) */
+@media print {
+    .app-container {
+        display: none;
     }
 }
