@@ -94,6 +94,15 @@ class VideoEditor {
         this.history = [];
         this.historyIndex = -1;
 
+        // Split mode state
+        this.splitMode = false;
+        this.splitStartTime = null;
+        this.splitEndTime = null;
+        this.splitStartMarker = null;
+        this.splitEndMarker = null;
+        this.splitSelection = null;
+        this.splitInstruction = null;
+
         // Initialize
         this.init();
     }
@@ -204,7 +213,15 @@ class VideoEditor {
             if (!e.target.closest('.timeline-clip')) {
                 const rect = this.tracksWrapper.getBoundingClientRect();
                 const x = e.touches[0].clientX - rect.left + this.timelineContainer.scrollLeft;
-                this.positionCutCursor(x);
+                const time = x / (this.pixelsPerSecond * this.zoom);
+                const clampedTime = Math.max(0, Math.min(this.videoDuration, time));
+
+                // Si en mode découpe, gérer les marqueurs
+                if (this.splitMode) {
+                    this.handleSplitClick(clampedTime);
+                } else {
+                    this.positionCutCursor(x);
+                }
             }
         }, { passive: true });
 
@@ -515,7 +532,15 @@ class VideoEditor {
 
         const rect = this.tracksWrapper.getBoundingClientRect();
         const x = e.clientX - rect.left + this.timelineContainer.scrollLeft;
-        this.positionCutCursor(x);
+        const time = x / (this.pixelsPerSecond * this.zoom);
+        const clampedTime = Math.max(0, Math.min(this.videoDuration, time));
+
+        // Si en mode découpe, gérer les marqueurs
+        if (this.splitMode) {
+            this.handleSplitClick(clampedTime);
+        } else {
+            this.positionCutCursor(x);
+        }
     }
 
     positionCutCursor(x) {
@@ -573,59 +598,244 @@ class VideoEditor {
         this.scissorBtn.classList.remove('visible');
     }
 
-    // ==================== SPLIT ====================
+    // ==================== SPLIT MODE ====================
 
-    splitAtCursor() {
-        if (!this.selectedClip || !this.cutCursorVisible) {
-            this.showToast('Positionnez le curseur et sélectionnez un clip', 'warning');
+    toggleSplitMode() {
+        if (this.splitMode) {
+            this.exitSplitMode();
+        } else {
+            this.enterSplitMode();
+        }
+    }
+
+    enterSplitMode() {
+        this.splitMode = true;
+        this.splitStartTime = null;
+        this.splitEndTime = null;
+
+        // Activer le bouton
+        const splitBtn = document.querySelector('[data-tool="split"]');
+        if (splitBtn) splitBtn.classList.add('active');
+
+        // Afficher l'instruction
+        this.showSplitInstruction('Cliquez sur le DÉBUT de la zone à découper');
+
+        this.showToast('Mode découpe activé', 'success');
+    }
+
+    exitSplitMode() {
+        this.splitMode = false;
+        this.splitStartTime = null;
+        this.splitEndTime = null;
+
+        // Désactiver le bouton
+        const splitBtn = document.querySelector('[data-tool="split"]');
+        if (splitBtn) splitBtn.classList.remove('active');
+
+        // Supprimer les marqueurs
+        this.clearSplitMarkers();
+
+        // Supprimer l'instruction
+        this.hideSplitInstruction();
+    }
+
+    showSplitInstruction(text) {
+        this.hideSplitInstruction();
+        this.splitInstruction = document.createElement('div');
+        this.splitInstruction.className = 'split-instruction';
+        this.splitInstruction.textContent = text;
+        document.body.appendChild(this.splitInstruction);
+    }
+
+    hideSplitInstruction() {
+        if (this.splitInstruction) {
+            this.splitInstruction.remove();
+            this.splitInstruction = null;
+        }
+    }
+
+    handleSplitClick(time) {
+        if (!this.splitMode) return;
+
+        if (this.splitStartTime === null) {
+            // Premier clic - définir le début
+            this.splitStartTime = time;
+            this.createSplitMarker(time, 'start');
+            this.showSplitInstruction('Cliquez sur la FIN de la zone à découper');
+            this.showToast('Début marqué', 'success');
+        } else if (this.splitEndTime === null) {
+            // Deuxième clic - définir la fin
+            if (time <= this.splitStartTime) {
+                this.showToast('La fin doit être après le début', 'warning');
+                return;
+            }
+
+            this.splitEndTime = time;
+            this.createSplitMarker(time, 'end');
+            this.createSplitSelection();
+            this.hideSplitInstruction();
+
+            // Créer le segment sélectionné
+            this.performSplit();
+        }
+    }
+
+    createSplitMarker(time, type) {
+        const marker = document.createElement('div');
+        marker.className = `split-marker ${type}`;
+        const position = time * this.pixelsPerSecond * this.zoom;
+        marker.style.left = `${position}px`;
+
+        if (type === 'start') {
+            this.splitStartMarker = marker;
+        } else {
+            this.splitEndMarker = marker;
+        }
+
+        this.tracksWrapper.appendChild(marker);
+    }
+
+    createSplitSelection() {
+        if (this.splitStartTime === null || this.splitEndTime === null) return;
+
+        this.splitSelection = document.createElement('div');
+        this.splitSelection.className = 'split-selection';
+
+        const startPos = this.splitStartTime * this.pixelsPerSecond * this.zoom;
+        const endPos = this.splitEndTime * this.pixelsPerSecond * this.zoom;
+
+        this.splitSelection.style.left = `${startPos}px`;
+        this.splitSelection.style.width = `${endPos - startPos}px`;
+
+        this.tracksWrapper.appendChild(this.splitSelection);
+    }
+
+    clearSplitMarkers() {
+        if (this.splitStartMarker) {
+            this.splitStartMarker.remove();
+            this.splitStartMarker = null;
+        }
+        if (this.splitEndMarker) {
+            this.splitEndMarker.remove();
+            this.splitEndMarker = null;
+        }
+        if (this.splitSelection) {
+            this.splitSelection.remove();
+            this.splitSelection = null;
+        }
+    }
+
+    performSplit() {
+        // Trouver le clip qui contient la zone de sélection
+        const clip = this.clips.find(c => {
+            const clipEnd = c.startTime + c.duration;
+            return c.startTime <= this.splitStartTime && clipEnd >= this.splitEndTime;
+        });
+
+        if (!clip) {
+            this.showToast('Aucun clip dans cette zone', 'warning');
+            this.exitSplitMode();
             return;
         }
 
-        const clipEnd = this.selectedClip.startTime + this.selectedClip.duration;
-        if (this.cutTime <= this.selectedClip.startTime || this.cutTime >= clipEnd) {
-            this.showToast('Le curseur doit être sur le clip sélectionné', 'warning');
-            return;
+        const clipEnd = clip.startTime + clip.duration;
+
+        // Calculer les 3 segments
+        const newClips = [];
+        const index = this.clips.findIndex(c => c.id === clip.id);
+
+        // Segment 1: Avant la sélection (si existe)
+        if (this.splitStartTime > clip.startTime) {
+            const duration1 = this.splitStartTime - clip.startTime;
+            const sourceRelative1 = (duration1 / clip.duration) * (clip.sourceEnd - clip.sourceStart);
+            newClips.push({
+                id: this.clipIdCounter++,
+                trackIndex: clip.trackIndex,
+                startTime: clip.startTime,
+                sourceStart: clip.sourceStart,
+                sourceEnd: clip.sourceStart + sourceRelative1,
+                duration: duration1,
+                speed: clip.speed,
+                name: clip.name
+            });
         }
 
-        // Calculate split
-        const relativeTime = this.cutTime - this.selectedClip.startTime;
-        const sourceRelativeTime = (relativeTime / this.selectedClip.duration) *
-            (this.selectedClip.sourceEnd - this.selectedClip.sourceStart);
+        // Segment 2: La sélection (zone découpée)
+        const duration2 = this.splitEndTime - this.splitStartTime;
+        const sourceRelativeStart = ((this.splitStartTime - clip.startTime) / clip.duration) * (clip.sourceEnd - clip.sourceStart);
+        const sourceRelativeEnd = ((this.splitEndTime - clip.startTime) / clip.duration) * (clip.sourceEnd - clip.sourceStart);
 
-        // Create two new clips
-        const clip1 = {
+        const selectedSegment = {
             id: this.clipIdCounter++,
-            trackIndex: this.selectedClip.trackIndex,
-            startTime: this.selectedClip.startTime,
-            sourceStart: this.selectedClip.sourceStart,
-            sourceEnd: this.selectedClip.sourceStart + sourceRelativeTime,
-            duration: relativeTime,
-            speed: this.selectedClip.speed,
-            name: this.selectedClip.name + ' (1)'
+            trackIndex: clip.trackIndex,
+            startTime: this.splitStartTime,
+            sourceStart: clip.sourceStart + sourceRelativeStart,
+            sourceEnd: clip.sourceStart + sourceRelativeEnd,
+            duration: duration2,
+            speed: clip.speed,
+            name: clip.name + ' (sélection)',
+            isSelected: true
         };
+        newClips.push(selectedSegment);
 
-        const clip2 = {
-            id: this.clipIdCounter++,
-            trackIndex: this.selectedClip.trackIndex,
-            startTime: this.cutTime,
-            sourceStart: this.selectedClip.sourceStart + sourceRelativeTime,
-            sourceEnd: this.selectedClip.sourceEnd,
-            duration: this.selectedClip.duration - relativeTime,
-            speed: this.selectedClip.speed,
-            name: this.selectedClip.name + ' (2)'
-        };
+        // Segment 3: Après la sélection (si existe)
+        if (this.splitEndTime < clipEnd) {
+            const duration3 = clipEnd - this.splitEndTime;
+            newClips.push({
+                id: this.clipIdCounter++,
+                trackIndex: clip.trackIndex,
+                startTime: this.splitEndTime,
+                sourceStart: clip.sourceStart + sourceRelativeEnd,
+                sourceEnd: clip.sourceEnd,
+                duration: duration3,
+                speed: clip.speed,
+                name: clip.name
+            });
+        }
 
-        // Replace original with new clips
-        const index = this.clips.findIndex(c => c.id === this.selectedClip.id);
-        this.clips.splice(index, 1, clip1, clip2);
+        // Remplacer le clip original
+        this.clips.splice(index, 1, ...newClips);
 
-        // Select second clip
-        this.selectedClip = clip2;
-        this.hideScissorButton();
+        // Sélectionner le segment découpé
+        this.selectedClip = selectedSegment;
 
         this.renderClips();
         this.saveState();
-        this.showToast('Clip divisé !', 'success');
+        this.showToast('Zone découpée ! Vous pouvez la supprimer ou la déplacer', 'success');
+
+        // Garder les marqueurs visibles mais quitter le mode
+        this.splitMode = false;
+        const splitBtn = document.querySelector('[data-tool="split"]');
+        if (splitBtn) splitBtn.classList.remove('active');
+    }
+
+    deleteSelectedSegment() {
+        if (!this.selectedClip) {
+            this.showToast('Sélectionnez d\'abord un segment', 'warning');
+            return;
+        }
+
+        if (this.clips.length === 1) {
+            this.showToast('Impossible de supprimer le dernier clip', 'warning');
+            return;
+        }
+
+        const index = this.clips.findIndex(c => c.id === this.selectedClip.id);
+        if (index !== -1) {
+            this.clips.splice(index, 1);
+            this.selectedClip = null;
+            this.clearSplitMarkers();
+            this.renderClips();
+            this.saveState();
+            this.showToast('Segment supprimé', 'success');
+        }
+    }
+
+    // Ancienne fonction pour le bouton scissor (maintenant utilise le nouveau workflow)
+    splitAtCursor() {
+        if (!this.splitMode) {
+            this.enterSplitMode();
+        }
     }
 
     // ==================== DRAG & DROP ====================
@@ -734,7 +944,7 @@ class VideoEditor {
     handleTool(tool) {
         switch (tool) {
             case 'split':
-                this.splitAtCursor();
+                this.toggleSplitMode();
                 break;
             case 'adjust':
                 this.showAdjustPanel();
@@ -743,7 +953,7 @@ class VideoEditor {
                 this.showSpeedPanel();
                 break;
             case 'delete':
-                this.deleteSelectedClip();
+                this.deleteSelectedSegment();
                 break;
             case 'transform':
                 this.showTransformPanel();
@@ -1340,6 +1550,7 @@ class VideoEditor {
             case 'Escape':
                 this.closeExportModal();
                 this.deselectClip();
+                this.exitSplitMode();
                 const panel = document.querySelector('.tool-options-panel');
                 if (panel) panel.remove();
                 break;
