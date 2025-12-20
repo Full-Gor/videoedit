@@ -2,748 +2,168 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VideoEdit Pro - Montage Vidéo & Audio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VideoEdit - Éditeur Vidéo</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <header class="header">
-            <div class="logo">
+    <!-- Page d'accueil - Import -->
+    <div class="home-screen" id="home-screen">
+        <div class="home-content">
+            <div class="home-logo">
                 <i class="fas fa-film"></i>
-                <span>VideoEdit Pro</span>
+                <h1>VideoEdit</h1>
             </div>
-            <nav class="main-nav">
-                <button class="nav-btn" data-action="new-project"><i class="fas fa-plus"></i> <span>Nouveau</span></button>
-                <button class="nav-btn" data-action="save-project"><i class="fas fa-save"></i> <span>Sauvegarder</span></button>
-                <button class="nav-btn" data-action="load-project"><i class="fas fa-folder-open"></i> <span>Charger</span></button>
-                <button class="nav-btn" data-action="export"><i class="fas fa-download"></i> <span>Exporter</span></button>
-                <button class="nav-btn" data-action="undo"><i class="fas fa-undo"></i></button>
-                <button class="nav-btn" data-action="redo"><i class="fas fa-redo"></i></button>
-            </nav>
-            <div class="header-right">
-                <button class="nav-btn help-btn" data-action="help"><i class="fas fa-question-circle"></i></button>
+            <p class="home-subtitle">Éditeur vidéo simple et rapide</p>
+            <button class="import-button" id="import-btn">
+                <i class="fas fa-plus"></i>
+                <span>Importer votre vidéo</span>
+            </button>
+            <p class="home-formats">MP4, WebM, MOV, AVI, MKV</p>
+        </div>
+        <input type="file" id="file-input" accept="video/*,.avi,.mkv,.mov,.wmv,.flv" hidden>
+    </div>
+
+    <!-- Éditeur - Caché par défaut -->
+    <div class="editor-screen" id="editor-screen">
+        <!-- Header -->
+        <header class="editor-header">
+            <button class="header-btn" id="back-btn">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="header-actions">
+                <button class="header-btn" id="undo-btn">
+                    <i class="fas fa-undo"></i>
+                </button>
+                <button class="header-btn" id="redo-btn">
+                    <i class="fas fa-redo"></i>
+                </button>
             </div>
+            <button class="export-btn" id="export-btn">
+                <i class="fas fa-download"></i>
+            </button>
         </header>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Left Panel - Media Library -->
-            <aside class="left-panel">
-                <div class="panel-header">
-                    <h3><i class="fas fa-photo-video"></i> Médiathèque</h3>
-                    <button class="import-btn" id="import-media">
-                        <i class="fas fa-plus"></i> Importer
-                    </button>
-                </div>
-                <input type="file" id="file-input" multiple accept="video/*,audio/*,image/*,.avi,.mkv,.mov,.wmv,.flv" hidden>
+        <!-- Zone de prévisualisation -->
+        <div class="preview-area">
+            <video id="preview-video" playsinline></video>
+        </div>
 
-                <div class="media-tabs">
-                    <button class="tab-btn active" data-tab="all">Tous</button>
-                    <button class="tab-btn" data-tab="video">Vidéos</button>
-                    <button class="tab-btn" data-tab="audio">Audio</button>
-                    <button class="tab-btn" data-tab="image">Images</button>
-                </div>
+        <!-- Contrôles de lecture -->
+        <div class="playback-controls">
+            <span class="time-display">
+                <span id="current-time">0:00</span> / <span id="total-time">0:00</span>
+            </span>
+            <button class="play-btn" id="play-btn">
+                <i class="fas fa-play"></i>
+            </button>
+            <button class="fullscreen-btn" id="fullscreen-btn">
+                <i class="fas fa-expand"></i>
+            </button>
+        </div>
 
-                <div class="media-library" id="media-library">
-                    <div class="empty-state">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <p>Glissez vos fichiers ici ou cliquez sur Importer</p>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Center - Preview & Canvas -->
-            <main class="center-panel">
-                <div class="preview-container">
-                    <div class="preview-header">
-                        <span class="preview-title">Aperçu</span>
-                        <div class="preview-info">
-                            <span id="current-time">00:00:00</span> / <span id="total-time">00:00:00</span>
-                        </div>
-                    </div>
-                    <div class="preview-wrapper">
-                        <canvas id="preview-canvas"></canvas>
-                        <video id="preview-video" crossorigin="anonymous"></video>
-                        <div class="text-overlays" id="text-overlays"></div>
-                        <div class="speech-bubbles" id="speech-bubbles"></div>
-                    </div>
-                    <div class="preview-controls">
-                        <button class="control-btn" data-action="skip-start"><i class="fas fa-fast-backward"></i></button>
-                        <button class="control-btn" data-action="step-back"><i class="fas fa-step-backward"></i></button>
-                        <button class="control-btn play-btn" data-action="play-pause" id="play-btn">
-                            <i class="fas fa-play"></i>
-                        </button>
-                        <button class="control-btn" data-action="step-forward"><i class="fas fa-step-forward"></i></button>
-                        <button class="control-btn" data-action="skip-end"><i class="fas fa-fast-forward"></i></button>
-                        <div class="volume-control">
-                            <i class="fas fa-volume-up"></i>
-                            <input type="range" id="volume-slider" min="0" max="100" value="100">
-                        </div>
-                        <button class="control-btn" data-action="fullscreen"><i class="fas fa-expand"></i></button>
-                    </div>
-                </div>
-            </main>
-
-            <!-- Right Panel - Tools & Effects -->
-            <aside class="right-panel">
-                <div class="tools-tabs">
-                    <button class="tool-tab active" data-tool="effects">Effets</button>
-                    <button class="tool-tab" data-tool="text">Texte</button>
-                    <button class="tool-tab" data-tool="audio">Audio</button>
-                    <button class="tool-tab" data-tool="filters">Filtres</button>
-                    <button class="tool-tab" data-tool="guide">Guide</button>
-                </div>
-
-                <!-- Effects Panel -->
-                <div class="tool-panel active" id="effects-panel">
-                    <div class="tool-section">
-                        <h4><i class="fas fa-exchange-alt"></i> Transitions Vidéo</h4>
-                        <div class="effects-grid">
-                            <button class="effect-btn" data-effect="fade">Fondu</button>
-                            <button class="effect-btn" data-effect="dissolve">Dissolution</button>
-                            <button class="effect-btn" data-effect="wipe-left">Balayage G</button>
-                            <button class="effect-btn" data-effect="wipe-right">Balayage D</button>
-                            <button class="effect-btn" data-effect="wipe-up">Balayage H</button>
-                            <button class="effect-btn" data-effect="wipe-down">Balayage B</button>
-                            <button class="effect-btn" data-effect="zoom-in">Zoom In</button>
-                            <button class="effect-btn" data-effect="zoom-out">Zoom Out</button>
-                            <button class="effect-btn" data-effect="slide-left">Glisser G</button>
-                            <button class="effect-btn" data-effect="slide-right">Glisser D</button>
-                            <button class="effect-btn" data-effect="rotate">Rotation</button>
-                            <button class="effect-btn" data-effect="blur-trans">Flou</button>
-                        </div>
-                    </div>
-
-                    <div class="tool-section">
-                        <h4><i class="fas fa-border-style"></i> Bordures & Cadres</h4>
-                        <div class="border-controls">
-                            <div class="control-row">
-                                <label>Style</label>
-                                <select id="border-style">
-                                    <option value="none">Aucune</option>
-                                    <option value="solid">Solide</option>
-                                    <option value="double">Double</option>
-                                    <option value="dashed">Pointillé</option>
-                                    <option value="rounded">Arrondie</option>
-                                    <option value="shadow">Ombre</option>
-                                    <option value="glow">Lueur</option>
-                                    <option value="vintage">Vintage</option>
-                                </select>
-                            </div>
-                            <div class="control-row">
-                                <label>Couleur</label>
-                                <input type="color" id="border-color" value="#ffffff">
-                            </div>
-                            <div class="control-row">
-                                <label>Épaisseur</label>
-                                <input type="range" id="border-width" min="0" max="50" value="0">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tool-section">
-                        <h4><i class="fas fa-user-slash"></i> Détourage Background</h4>
-                        <div class="bg-removal-controls">
-                            <button class="action-btn" id="remove-bg"><i class="fas fa-eraser"></i> Supprimer arrière-plan</button>
-                            <div class="control-row">
-                                <label>Couleur de remplacement</label>
-                                <input type="color" id="bg-replace-color" value="#00ff00">
-                            </div>
-                            <div class="control-row">
-                                <label>Tolérance</label>
-                                <input type="range" id="bg-tolerance" min="0" max="100" value="30">
-                            </div>
-                            <button class="action-btn" id="chroma-key"><i class="fas fa-palette"></i> Chroma Key</button>
-                        </div>
-                    </div>
-
-                    <div class="tool-section">
-                        <h4><i class="fas fa-tint"></i> Dégradés</h4>
-                        <div class="gradient-controls">
-                            <div class="gradient-presets">
-                                <button class="gradient-btn" data-gradient="sunset" style="background: linear-gradient(45deg, #ff6b6b, #feca57)"></button>
-                                <button class="gradient-btn" data-gradient="ocean" style="background: linear-gradient(45deg, #667eea, #764ba2)"></button>
-                                <button class="gradient-btn" data-gradient="forest" style="background: linear-gradient(45deg, #11998e, #38ef7d)"></button>
-                                <button class="gradient-btn" data-gradient="fire" style="background: linear-gradient(45deg, #f12711, #f5af19)"></button>
-                                <button class="gradient-btn" data-gradient="night" style="background: linear-gradient(45deg, #0f0c29, #302b63)"></button>
-                                <button class="gradient-btn" data-gradient="custom" style="background: linear-gradient(45deg, #fff, #000)">+</button>
-                            </div>
-                            <div class="control-row">
-                                <label>Opacité</label>
-                                <input type="range" id="gradient-opacity" min="0" max="100" value="50">
-                            </div>
-                            <div class="control-row">
-                                <label>Direction</label>
-                                <input type="range" id="gradient-angle" min="0" max="360" value="45">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Text Panel -->
-                <div class="tool-panel" id="text-panel">
-                    <div class="tool-section">
-                        <h4><i class="fas fa-heading"></i> Ajouter du texte</h4>
-                        <textarea id="text-content" placeholder="Entrez votre texte..."></textarea>
-                        <div class="text-controls">
-                            <div class="control-row">
-                                <label>Police</label>
-                                <select id="font-family">
-                                    <option value="Inter">Inter</option>
-                                    <option value="Arial">Arial</option>
-                                    <option value="Georgia">Georgia</option>
-                                    <option value="Impact">Impact</option>
-                                    <option value="Comic Sans MS">Comic Sans</option>
-                                    <option value="Courier New">Courier</option>
-                                </select>
-                            </div>
-                            <div class="control-row">
-                                <label>Taille</label>
-                                <input type="range" id="font-size" min="12" max="200" value="48">
-                            </div>
-                            <div class="control-row">
-                                <label>Couleur</label>
-                                <input type="color" id="text-color" value="#ffffff">
-                            </div>
-                            <div class="control-row">
-                                <label>Contour</label>
-                                <input type="color" id="text-stroke" value="#000000">
-                            </div>
-                            <div class="text-style-btns">
-                                <button class="style-btn" data-style="bold"><i class="fas fa-bold"></i></button>
-                                <button class="style-btn" data-style="italic"><i class="fas fa-italic"></i></button>
-                                <button class="style-btn" data-style="underline"><i class="fas fa-underline"></i></button>
-                                <button class="style-btn" data-style="shadow"><i class="fas fa-clone"></i></button>
-                            </div>
-                        </div>
-                        <button class="action-btn" id="add-text"><i class="fas fa-plus"></i> Ajouter texte</button>
-                    </div>
-
-                    <div class="tool-section">
-                        <h4><i class="fas fa-comment"></i> Bulles de conversation</h4>
-                        <div class="bubble-styles">
-                            <button class="bubble-btn" data-bubble="speech"><i class="fas fa-comment"></i></button>
-                            <button class="bubble-btn" data-bubble="thought"><i class="fas fa-cloud"></i></button>
-                            <button class="bubble-btn" data-bubble="shout"><i class="fas fa-bullhorn"></i></button>
-                            <button class="bubble-btn" data-bubble="whisper"><i class="fas fa-comment-dots"></i></button>
-                            <button class="bubble-btn" data-bubble="narrator"><i class="fas fa-square"></i></button>
-                            <button class="bubble-btn" data-bubble="comic"><i class="fas fa-bomb"></i></button>
-                        </div>
-                        <textarea id="bubble-text" placeholder="Texte de la bulle..."></textarea>
-                        <div class="control-row">
-                            <label>Couleur fond</label>
-                            <input type="color" id="bubble-bg" value="#ffffff">
-                        </div>
-                        <div class="control-row">
-                            <label>Couleur texte</label>
-                            <input type="color" id="bubble-text-color" value="#000000">
-                        </div>
-                        <button class="action-btn" id="add-bubble"><i class="fas fa-plus"></i> Ajouter bulle</button>
-                    </div>
-
-                    <div class="tool-section">
-                        <h4><i class="fas fa-closed-captioning"></i> Sous-titres</h4>
-                        <button class="action-btn" id="add-subtitle"><i class="fas fa-plus"></i> Ajouter sous-titre</button>
-                        <button class="action-btn" id="import-srt"><i class="fas fa-file-import"></i> Importer SRT</button>
-                        <button class="action-btn" id="auto-caption"><i class="fas fa-robot"></i> Sous-titres auto</button>
-                    </div>
-                </div>
-
-                <!-- Audio Panel -->
-                <div class="tool-panel" id="audio-panel">
-                    <div class="tool-section">
-                        <h4><i class="fas fa-music"></i> Transitions Audio</h4>
-                        <div class="effects-grid">
-                            <button class="effect-btn" data-audio-effect="fade-in">Fondu entrée</button>
-                            <button class="effect-btn" data-audio-effect="fade-out">Fondu sortie</button>
-                            <button class="effect-btn" data-audio-effect="crossfade">Crossfade</button>
-                            <button class="effect-btn" data-audio-effect="ducking">Ducking</button>
-                        </div>
-                    </div>
-
-                    <div class="tool-section">
-                        <h4><i class="fas fa-sliders-h"></i> Égaliseur</h4>
-                        <div class="equalizer">
-                            <div class="eq-band">
-                                <input type="range" class="eq-slider" data-freq="60" min="-12" max="12" value="0" orient="vertical">
-                                <span>60Hz</span>
-                            </div>
-                            <div class="eq-band">
-                                <input type="range" class="eq-slider" data-freq="230" min="-12" max="12" value="0" orient="vertical">
-                                <span>230Hz</span>
-                            </div>
-                            <div class="eq-band">
-                                <input type="range" class="eq-slider" data-freq="910" min="-12" max="12" value="0" orient="vertical">
-                                <span>910Hz</span>
-                            </div>
-                            <div class="eq-band">
-                                <input type="range" class="eq-slider" data-freq="3600" min="-12" max="12" value="0" orient="vertical">
-                                <span>3.6kHz</span>
-                            </div>
-                            <div class="eq-band">
-                                <input type="range" class="eq-slider" data-freq="14000" min="-12" max="12" value="0" orient="vertical">
-                                <span>14kHz</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tool-section">
-                        <h4><i class="fas fa-magic"></i> Effets Audio</h4>
-                        <div class="effects-grid">
-                            <button class="effect-btn" data-audio-fx="reverb">Réverbération</button>
-                            <button class="effect-btn" data-audio-fx="echo">Écho</button>
-                            <button class="effect-btn" data-audio-fx="pitch-up">Pitch +</button>
-                            <button class="effect-btn" data-audio-fx="pitch-down">Pitch -</button>
-                            <button class="effect-btn" data-audio-fx="speed-up">Accélérer</button>
-                            <button class="effect-btn" data-audio-fx="slow-down">Ralentir</button>
-                            <button class="effect-btn" data-audio-fx="noise-reduce">Anti-bruit</button>
-                            <button class="effect-btn" data-audio-fx="normalize">Normaliser</button>
-                            <button class="effect-btn" data-audio-fx="bass-boost">Bass Boost</button>
-                            <button class="effect-btn" data-audio-fx="voice-enhance">Voix +</button>
-                        </div>
-                    </div>
-
-                    <div class="tool-section">
-                        <h4><i class="fas fa-volume-up"></i> Volume & Mix</h4>
-                        <div class="control-row">
-                            <label>Volume principal</label>
-                            <input type="range" id="master-volume" min="0" max="200" value="100">
-                        </div>
-                        <div class="control-row">
-                            <label>Balance L/R</label>
-                            <input type="range" id="audio-pan" min="-100" max="100" value="0">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Filters Panel -->
-                <div class="tool-panel" id="filters-panel">
-                    <div class="tool-section">
-                        <h4><i class="fas fa-adjust"></i> Ajustements</h4>
-                        <div class="adjustment-controls">
-                            <div class="control-row">
-                                <label>Luminosité</label>
-                                <input type="range" id="brightness" min="-100" max="100" value="0">
-                            </div>
-                            <div class="control-row">
-                                <label>Contraste</label>
-                                <input type="range" id="contrast" min="-100" max="100" value="0">
-                            </div>
-                            <div class="control-row">
-                                <label>Saturation</label>
-                                <input type="range" id="saturation" min="-100" max="100" value="0">
-                            </div>
-                            <div class="control-row">
-                                <label>Teinte</label>
-                                <input type="range" id="hue" min="0" max="360" value="0">
-                            </div>
-                            <div class="control-row">
-                                <label>Flou</label>
-                                <input type="range" id="blur" min="0" max="20" value="0">
-                            </div>
-                            <div class="control-row">
-                                <label>Netteté</label>
-                                <input type="range" id="sharpen" min="0" max="100" value="0">
-                            </div>
-                            <div class="control-row">
-                                <label>Vignette</label>
-                                <input type="range" id="vignette" min="0" max="100" value="0">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tool-section">
-                        <h4><i class="fas fa-palette"></i> Filtres prédéfinis</h4>
-                        <div class="filters-grid">
-                            <button class="filter-btn" data-filter="none">Original</button>
-                            <button class="filter-btn" data-filter="grayscale">N&B</button>
-                            <button class="filter-btn" data-filter="sepia">Sépia</button>
-                            <button class="filter-btn" data-filter="vintage">Vintage</button>
-                            <button class="filter-btn" data-filter="cold">Froid</button>
-                            <button class="filter-btn" data-filter="warm">Chaud</button>
-                            <button class="filter-btn" data-filter="dramatic">Dramatique</button>
-                            <button class="filter-btn" data-filter="cinematic">Cinéma</button>
-                            <button class="filter-btn" data-filter="noir">Film Noir</button>
-                            <button class="filter-btn" data-filter="pop">Pop Art</button>
-                            <button class="filter-btn" data-filter="retro">Rétro</button>
-                            <button class="filter-btn" data-filter="dream">Rêve</button>
-                        </div>
-                    </div>
-
-                    <div class="tool-section">
-                        <h4><i class="fas fa-crop"></i> Transformation</h4>
-                        <div class="transform-controls">
-                            <div class="control-row">
-                                <label>Rotation</label>
-                                <input type="range" id="rotation" min="0" max="360" value="0">
-                            </div>
-                            <div class="control-row">
-                                <label>Échelle</label>
-                                <input type="range" id="scale" min="50" max="200" value="100">
-                            </div>
-                            <div class="transform-btns">
-                                <button class="action-btn" data-transform="flip-h"><i class="fas fa-arrows-alt-h"></i> Miroir H</button>
-                                <button class="action-btn" data-transform="flip-v"><i class="fas fa-arrows-alt-v"></i> Miroir V</button>
-                                <button class="action-btn" data-transform="crop"><i class="fas fa-crop"></i> Recadrer</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tool-section">
-                        <h4><i class="fas fa-clock"></i> Vitesse</h4>
-                        <div class="speed-controls">
-                            <div class="speed-presets">
-                                <button class="speed-btn" data-speed="0.25">0.25x</button>
-                                <button class="speed-btn" data-speed="0.5">0.5x</button>
-                                <button class="speed-btn active" data-speed="1">1x</button>
-                                <button class="speed-btn" data-speed="1.5">1.5x</button>
-                                <button class="speed-btn" data-speed="2">2x</button>
-                                <button class="speed-btn" data-speed="4">4x</button>
-                            </div>
-                            <button class="action-btn" data-action="reverse"><i class="fas fa-backward"></i> Inverser</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Guide Panel -->
-                <div class="tool-panel" id="guide-panel">
-                    <div class="guide-content">
-                        <div class="guide-section">
-                            <h4>Raccourcis clavier</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="key">Espace</span> lecture / pause</div>
-                                <div class="guide-item"><span class="key">V</span> outil sélection</div>
-                                <div class="guide-item"><span class="key">C</span> outil coupe</div>
-                                <div class="guide-item"><span class="key">B</span> outil rasoir</div>
-                                <div class="guide-item"><span class="key">Ctrl+B</span> diviser au curseur</div>
-                                <div class="guide-item"><span class="key">Ctrl+D</span> dupliquer clip</div>
-                                <div class="guide-item"><span class="key">Ctrl+Z</span> annuler</div>
-                                <div class="guide-item"><span class="key">Ctrl+Shift+Z</span> rétablir</div>
-                                <div class="guide-item"><span class="key">Suppr</span> supprimer clip</div>
-                                <div class="guide-item"><span class="key">←</span> reculer 0.1s</div>
-                                <div class="guide-item"><span class="key">→</span> avancer 0.1s</div>
-                                <div class="guide-item"><span class="key">Shift+←</span> reculer 1s</div>
-                                <div class="guide-item"><span class="key">Shift+→</span> avancer 1s</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Outils timeline</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Sélection</span> déplacer et sélectionner les clips</div>
-                                <div class="guide-item"><span class="tool-name">Coupe</span> ajuster les points d'entrée/sortie</div>
-                                <div class="guide-item"><span class="tool-name">Glisser</span> décaler le contenu dans le clip</div>
-                                <div class="guide-item"><span class="tool-name">Rasoir</span> couper le clip au clic</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Actions clips</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Diviser</span> séparer en deux au curseur</div>
-                                <div class="guide-item"><span class="tool-name">Supprimer</span> retirer le clip sélectionné</div>
-                                <div class="guide-item"><span class="tool-name">Dupliquer</span> copier à la suite</div>
-                                <div class="guide-item"><span class="tool-name">Fusionner</span> combiner les clips de la piste</div>
-                                <div class="guide-item"><span class="tool-name">Délier</span> séparer audio et vidéo</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Médiathèque</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Importer</span> ajouter fichiers vidéo, audio, image</div>
-                                <div class="guide-item"><span class="tool-name">Glisser-déposer</span> déposer directement sur la page</div>
-                                <div class="guide-item"><span class="tool-name">Double-clic</span> ajouter média à la timeline</div>
-                                <div class="guide-item"><span class="tool-name">Clic</span> prévisualiser le média</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Transitions vidéo</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Fondu</span> apparition/disparition progressive</div>
-                                <div class="guide-item"><span class="tool-name">Dissolution</span> mélange entre deux clips</div>
-                                <div class="guide-item"><span class="tool-name">Balayage</span> révélation directionnelle</div>
-                                <div class="guide-item"><span class="tool-name">Zoom</span> agrandissement/réduction</div>
-                                <div class="guide-item"><span class="tool-name">Glissement</span> translation horizontale</div>
-                                <div class="guide-item"><span class="tool-name">Rotation</span> pivot entre clips</div>
-                                <div class="guide-item"><span class="tool-name">Flou</span> transition par défocalisation</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Transitions audio</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Fondu entrée</span> augmentation progressive du volume</div>
-                                <div class="guide-item"><span class="tool-name">Fondu sortie</span> diminution progressive du volume</div>
-                                <div class="guide-item"><span class="tool-name">Crossfade</span> enchaînement entre deux pistes</div>
-                                <div class="guide-item"><span class="tool-name">Ducking</span> réduction auto sous la voix</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Effets audio</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Réverbération</span> simulation d'espace acoustique</div>
-                                <div class="guide-item"><span class="tool-name">Écho</span> répétition décalée du signal</div>
-                                <div class="guide-item"><span class="tool-name">Pitch +/-</span> modification de la tonalité</div>
-                                <div class="guide-item"><span class="tool-name">Vitesse +/-</span> accélération ou ralentissement</div>
-                                <div class="guide-item"><span class="tool-name">Anti-bruit</span> suppression du bruit de fond</div>
-                                <div class="guide-item"><span class="tool-name">Normaliser</span> équilibrage des niveaux</div>
-                                <div class="guide-item"><span class="tool-name">Bass Boost</span> amplification des basses</div>
-                                <div class="guide-item"><span class="tool-name">Voix +</span> clarification des voix</div>
-                                <div class="guide-item"><span class="tool-name">Égaliseur</span> ajustement par bande de fréquence</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Texte et bulles</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Texte</span> superposition avec police personnalisée</div>
-                                <div class="guide-item"><span class="tool-name">Bulle dialogue</span> style bande dessinée classique</div>
-                                <div class="guide-item"><span class="tool-name">Bulle pensée</span> forme nuage</div>
-                                <div class="guide-item"><span class="tool-name">Bulle cri</span> contour en étoile</div>
-                                <div class="guide-item"><span class="tool-name">Bulle murmure</span> contour pointillé</div>
-                                <div class="guide-item"><span class="tool-name">Narrateur</span> encadré rectangulaire</div>
-                                <div class="guide-item"><span class="tool-name">Sous-titres</span> texte synchronisé en bas</div>
-                                <div class="guide-item"><span class="tool-name">Import SRT</span> chargement fichier sous-titres</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Effets visuels</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Détourage</span> suppression arrière-plan uni</div>
-                                <div class="guide-item"><span class="tool-name">Chroma Key</span> incrustation fond coloré</div>
-                                <div class="guide-item"><span class="tool-name">Bordures</span> cadre autour de la vidéo</div>
-                                <div class="guide-item"><span class="tool-name">Dégradés</span> superposition colorée</div>
-                                <div class="guide-item"><span class="tool-name">Filtres</span> préréglages colorimétriques</div>
-                                <div class="guide-item"><span class="tool-name">Vignette</span> assombrissement périphérique</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Ajustements</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Luminosité</span> niveau de clarté global</div>
-                                <div class="guide-item"><span class="tool-name">Contraste</span> écart entre tons clairs et sombres</div>
-                                <div class="guide-item"><span class="tool-name">Saturation</span> intensité des couleurs</div>
-                                <div class="guide-item"><span class="tool-name">Teinte</span> rotation de la palette</div>
-                                <div class="guide-item"><span class="tool-name">Flou</span> adoucissement de l'image</div>
-                                <div class="guide-item"><span class="tool-name">Netteté</span> accentuation des contours</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Transformation</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Rotation</span> orientation de l'image</div>
-                                <div class="guide-item"><span class="tool-name">Échelle</span> taille de l'image</div>
-                                <div class="guide-item"><span class="tool-name">Miroir H</span> inversion horizontale</div>
-                                <div class="guide-item"><span class="tool-name">Miroir V</span> inversion verticale</div>
-                                <div class="guide-item"><span class="tool-name">Recadrer</span> sélection zone visible</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Vitesse</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">0.25x - 4x</span> multiplicateur de vitesse</div>
-                                <div class="guide-item"><span class="tool-name">Inverser</span> lecture en arrière</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Export</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">MP4</span> format universel H.264</div>
-                                <div class="guide-item"><span class="tool-name">WebM</span> format web VP9</div>
-                                <div class="guide-item"><span class="tool-name">MOV</span> format Apple</div>
-                                <div class="guide-item"><span class="tool-name">GIF</span> animation courte sans son</div>
-                                <div class="guide-item"><span class="tool-name">MP3</span> audio compressé</div>
-                                <div class="guide-item"><span class="tool-name">WAV</span> audio non compressé</div>
-                                <div class="guide-item"><span class="tool-name">4K / 1080p / 720p / 480p</span> résolutions disponibles</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Pistes</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Vidéo 1-2</span> pistes superposées</div>
-                                <div class="guide-item"><span class="tool-name">Audio 1-3</span> pistes audio indépendantes</div>
-                                <div class="guide-item"><span class="tool-name">Œil</span> visibilité de la piste</div>
-                                <div class="guide-item"><span class="tool-name">Cadenas</span> verrouillage de la piste</div>
-                                <div class="guide-item"><span class="tool-name">Solo</span> écoute isolée</div>
-                            </div>
-                        </div>
-
-                        <div class="guide-section">
-                            <h4>Projet</h4>
-                            <div class="guide-list">
-                                <div class="guide-item"><span class="tool-name">Nouveau</span> réinitialiser le projet</div>
-                                <div class="guide-item"><span class="tool-name">Sauvegarder</span> export JSON du projet</div>
-                                <div class="guide-item"><span class="tool-name">Charger</span> import projet existant</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </aside>
+        <!-- Contrôles timeline -->
+        <div class="timeline-controls">
+            <button class="timeline-ctrl-btn" id="settings-btn">
+                <i class="fas fa-sliders-h"></i>
+            </button>
+            <div class="zoom-controls">
+                <button class="zoom-btn" id="zoom-out">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <button class="zoom-btn" id="zoom-in">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="zoom-btn" id="zoom-fit">
+                    <i class="fas fa-compress-arrows-alt"></i>
+                </button>
+            </div>
         </div>
 
         <!-- Timeline -->
         <div class="timeline-container">
-            <div class="timeline-toolbar">
-                <div class="timeline-tools">
-                    <button class="timeline-tool active" data-tool="select" title="Sélection (V)">
-                        <i class="fas fa-mouse-pointer"></i>
-                    </button>
-                    <button class="timeline-tool" data-tool="cut" title="Couper (C)">
-                        <i class="fas fa-cut"></i>
-                    </button>
-                    <button class="timeline-tool" data-tool="slip" title="Glisser (Y)">
-                        <i class="fas fa-exchange-alt"></i>
-                    </button>
-                    <button class="timeline-tool" data-tool="razor" title="Rasoir (B)">
-                        <i class="fas fa-slash"></i>
-                    </button>
-                </div>
-                <div class="timeline-actions">
-                    <button class="action-btn" id="split-clip" title="Diviser (Ctrl+B)">
-                        <i class="fas fa-columns"></i> Diviser
-                    </button>
-                    <button class="action-btn" id="delete-clip" title="Supprimer (Suppr)">
-                        <i class="fas fa-trash"></i> Supprimer
-                    </button>
-                    <button class="action-btn" id="duplicate-clip" title="Dupliquer (Ctrl+D)">
-                        <i class="fas fa-copy"></i> Dupliquer
-                    </button>
-                    <button class="action-btn" id="merge-clips" title="Fusionner">
-                        <i class="fas fa-compress-arrows-alt"></i> Fusionner
-                    </button>
-                    <button class="action-btn" id="unlink-av" title="Délier Audio/Vidéo">
-                        <i class="fas fa-unlink"></i> Délier
-                    </button>
-                </div>
-                <div class="zoom-controls">
-                    <button class="zoom-btn" data-zoom="out"><i class="fas fa-search-minus"></i></button>
-                    <input type="range" id="timeline-zoom" min="1" max="100" value="50">
-                    <button class="zoom-btn" data-zoom="in"><i class="fas fa-search-plus"></i></button>
-                    <button class="zoom-btn" data-zoom="fit"><i class="fas fa-expand-arrows-alt"></i></button>
-                </div>
+            <div class="time-ruler" id="time-ruler"></div>
+            <div class="timeline-track" id="timeline-track">
+                <div class="playhead" id="playhead"></div>
             </div>
+        </div>
 
-            <div class="timeline-wrapper">
-                <div class="track-headers">
-                    <div class="track-header video-track">
-                        <span><i class="fas fa-video"></i> Vidéo 1</span>
-                        <div class="track-controls">
-                            <button class="track-btn" data-action="mute"><i class="fas fa-eye"></i></button>
-                            <button class="track-btn" data-action="lock"><i class="fas fa-lock-open"></i></button>
-                        </div>
-                    </div>
-                    <div class="track-header video-track">
-                        <span><i class="fas fa-video"></i> Vidéo 2</span>
-                        <div class="track-controls">
-                            <button class="track-btn" data-action="mute"><i class="fas fa-eye"></i></button>
-                            <button class="track-btn" data-action="lock"><i class="fas fa-lock-open"></i></button>
-                        </div>
-                    </div>
-                    <div class="track-header audio-track">
-                        <span><i class="fas fa-volume-up"></i> Audio 1</span>
-                        <div class="track-controls">
-                            <button class="track-btn" data-action="mute"><i class="fas fa-volume-up"></i></button>
-                            <button class="track-btn" data-action="solo"><i class="fas fa-headphones"></i></button>
-                            <button class="track-btn" data-action="lock"><i class="fas fa-lock-open"></i></button>
-                        </div>
-                    </div>
-                    <div class="track-header audio-track">
-                        <span><i class="fas fa-music"></i> Audio 2</span>
-                        <div class="track-controls">
-                            <button class="track-btn" data-action="mute"><i class="fas fa-volume-up"></i></button>
-                            <button class="track-btn" data-action="solo"><i class="fas fa-headphones"></i></button>
-                            <button class="track-btn" data-action="lock"><i class="fas fa-lock-open"></i></button>
-                        </div>
-                    </div>
-                    <div class="track-header audio-track">
-                        <span><i class="fas fa-microphone"></i> Audio 3</span>
-                        <div class="track-controls">
-                            <button class="track-btn" data-action="mute"><i class="fas fa-volume-up"></i></button>
-                            <button class="track-btn" data-action="solo"><i class="fas fa-headphones"></i></button>
-                            <button class="track-btn" data-action="lock"><i class="fas fa-lock-open"></i></button>
-                        </div>
-                    </div>
-                </div>
+        <!-- Barre d'outils du bas -->
+        <div class="bottom-toolbar">
+            <button class="tool-btn" data-tool="split">
+                <i class="fas fa-cut"></i>
+                <span>Diviser</span>
+            </button>
+            <button class="tool-btn" data-tool="adjust">
+                <i class="fas fa-sliders-h"></i>
+                <span>Ajuster</span>
+            </button>
+            <button class="tool-btn" data-tool="speed">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Vitesse</span>
+            </button>
+            <button class="tool-btn" data-tool="delete">
+                <i class="fas fa-trash"></i>
+                <span>Supprimer</span>
+            </button>
+            <button class="tool-btn" data-tool="transform">
+                <i class="fas fa-crop"></i>
+                <span>Transf.</span>
+            </button>
+            <button class="more-btn" id="more-tools-btn">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
 
-                <div class="timeline-scroll">
-                    <div class="time-ruler" id="time-ruler"></div>
-                    <div class="playhead" id="playhead">
-                        <div class="playhead-head"></div>
-                        <div class="playhead-line"></div>
-                    </div>
-                    <div class="tracks" id="tracks">
-                        <div class="track video-track" data-track="video1" id="track-video1"></div>
-                        <div class="track video-track" data-track="video2" id="track-video2"></div>
-                        <div class="track audio-track" data-track="audio1" id="track-audio1"></div>
-                        <div class="track audio-track" data-track="audio2" id="track-audio2"></div>
-                        <div class="track audio-track" data-track="audio3" id="track-audio3"></div>
-                    </div>
-                </div>
+        <!-- Panel d'outils supplémentaires (caché par défaut) -->
+        <div class="tools-panel" id="tools-panel">
+            <div class="tools-panel-content">
+                <button class="panel-tool-btn" data-tool="filters">
+                    <i class="fas fa-palette"></i>
+                    <span>Filtres</span>
+                </button>
+                <button class="panel-tool-btn" data-tool="text">
+                    <i class="fas fa-font"></i>
+                    <span>Texte</span>
+                </button>
+                <button class="panel-tool-btn" data-tool="audio">
+                    <i class="fas fa-volume-up"></i>
+                    <span>Audio</span>
+                </button>
+                <button class="panel-tool-btn" data-tool="rotate">
+                    <i class="fas fa-sync"></i>
+                    <span>Rotation</span>
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Modal Export -->
     <div class="modal" id="export-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-download"></i> Exporter le projet</h3>
-                <button class="close-btn">&times;</button>
+                <h3>Exporter</h3>
+                <button class="close-btn" id="close-export">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="export-options">
-                    <div class="control-row">
-                        <label>Format</label>
-                        <select id="export-format">
-                            <option value="mp4">MP4 (H.264)</option>
-                            <option value="webm">WebM (VP9)</option>
-                            <option value="mov">MOV</option>
-                            <option value="gif">GIF animé</option>
-                            <option value="mp3">MP3 (audio seul)</option>
-                            <option value="wav">WAV (audio seul)</option>
-                        </select>
-                    </div>
-                    <div class="control-row">
-                        <label>Résolution</label>
-                        <select id="export-resolution">
-                            <option value="4k">4K (3840x2160)</option>
-                            <option value="1080p" selected>Full HD (1920x1080)</option>
-                            <option value="720p">HD (1280x720)</option>
-                            <option value="480p">SD (854x480)</option>
-                            <option value="custom">Personnalisé</option>
-                        </select>
-                    </div>
-                    <div class="control-row">
-                        <label>Qualité</label>
-                        <select id="export-quality">
-                            <option value="high">Haute</option>
-                            <option value="medium" selected>Moyenne</option>
-                            <option value="low">Basse</option>
-                        </select>
-                    </div>
-                    <div class="control-row">
-                        <label>FPS</label>
-                        <select id="export-fps">
-                            <option value="24">24 fps</option>
-                            <option value="30" selected>30 fps</option>
-                            <option value="60">60 fps</option>
-                        </select>
-                    </div>
+                <div class="export-option">
+                    <label>Format</label>
+                    <select id="export-format">
+                        <option value="mp4">MP4</option>
+                        <option value="webm">WebM</option>
+                    </select>
                 </div>
-                <div class="export-progress" id="export-progress" style="display: none;">
+                <div class="export-option">
+                    <label>Qualité</label>
+                    <select id="export-quality">
+                        <option value="1080p">1080p</option>
+                        <option value="720p">720p</option>
+                        <option value="480p">480p</option>
+                    </select>
+                </div>
+                <div class="export-progress" id="export-progress">
                     <div class="progress-bar">
                         <div class="progress-fill" id="progress-fill"></div>
                     </div>
@@ -751,180 +171,13 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary close-modal">Annuler</button>
-                <button class="btn btn-primary" id="start-export">Exporter</button>
+                <button class="btn-primary" id="start-export">Exporter</button>
             </div>
         </div>
     </div>
 
-    <div class="modal" id="help-modal">
-        <div class="modal-content large">
-            <div class="modal-header">
-                <h3><i class="fas fa-question-circle"></i> Aide - 50 Fonctionnalités</h3>
-                <button class="close-btn">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="help-content">
-                    <div class="help-section">
-                        <h4>🎬 Montage Vidéo</h4>
-                        <ol>
-                            <li><strong>Couper</strong> - Divisez vos clips à n'importe quel endroit</li>
-                            <li><strong>Coller</strong> - Assemblez les clips sur la timeline</li>
-                            <li><strong>Fusionner</strong> - Combinez plusieurs clips en un seul</li>
-                            <li><strong>Dupliquer</strong> - Créez des copies de vos clips</li>
-                            <li><strong>Supprimer</strong> - Retirez des clips indésirables</li>
-                            <li><strong>Délier Audio/Vidéo</strong> - Séparez l'audio de la vidéo</li>
-                            <li><strong>Importer multi-fichiers</strong> - Ajoutez plusieurs médias</li>
-                            <li><strong>Réorganiser</strong> - Déplacez les clips par glisser-déposer</li>
-                        </ol>
-                    </div>
-                    <div class="help-section">
-                        <h4>🎵 Audio</h4>
-                        <ol start="9">
-                            <li><strong>Importer MP3</strong> - Ajoutez des pistes audio</li>
-                            <li><strong>Fondu entrée</strong> - Transition douce au début</li>
-                            <li><strong>Fondu sortie</strong> - Transition douce à la fin</li>
-                            <li><strong>Crossfade</strong> - Transition entre deux pistes</li>
-                            <li><strong>Égaliseur 5 bandes</strong> - Ajustez les fréquences</li>
-                            <li><strong>Réverbération</strong> - Effet d'espace</li>
-                            <li><strong>Écho</strong> - Répétition du son</li>
-                            <li><strong>Changement de pitch</strong> - Modifiez la tonalité</li>
-                            <li><strong>Accélération/Ralentissement</strong> - Changez la vitesse</li>
-                            <li><strong>Réduction de bruit</strong> - Supprimez le bruit de fond</li>
-                            <li><strong>Normalisation</strong> - Équilibrez le volume</li>
-                            <li><strong>Bass Boost</strong> - Amplifiez les basses</li>
-                            <li><strong>Ducking</strong> - Baisse auto pendant la voix</li>
-                        </ol>
-                    </div>
-                    <div class="help-section">
-                        <h4>✨ Transitions</h4>
-                        <ol start="22">
-                            <li><strong>Fondu</strong> - Transition en fondu</li>
-                            <li><strong>Dissolution</strong> - Mélange progressif</li>
-                            <li><strong>Balayage</strong> - 4 directions (G/D/H/B)</li>
-                            <li><strong>Zoom In/Out</strong> - Effet de zoom</li>
-                            <li><strong>Glissement</strong> - Effet de slide</li>
-                            <li><strong>Rotation</strong> - Transition rotative</li>
-                            <li><strong>Flou</strong> - Transition avec flou</li>
-                        </ol>
-                    </div>
-                    <div class="help-section">
-                        <h4>📝 Texte & Bulles</h4>
-                        <ol start="30">
-                            <li><strong>Texte personnalisé</strong> - Police, taille, couleur</li>
-                            <li><strong>Bulle de dialogue</strong> - Style BD classique</li>
-                            <li><strong>Bulle de pensée</strong> - Nuage de pensée</li>
-                            <li><strong>Bulle cri</strong> - Style explosion</li>
-                            <li><strong>Bulle chuchotement</strong> - Style pointillé</li>
-                            <li><strong>Boîte narrateur</strong> - Rectangle classique</li>
-                            <li><strong>Sous-titres</strong> - Ajout et import SRT</li>
-                        </ol>
-                    </div>
-                    <div class="help-section">
-                        <h4>🎨 Effets Visuels</h4>
-                        <ol start="37">
-                            <li><strong>Détourage background</strong> - Suppression d'arrière-plan</li>
-                            <li><strong>Chroma Key</strong> - Fond vert/bleu</li>
-                            <li><strong>Bordures</strong> - 8 styles différents</li>
-                            <li><strong>Dégradés</strong> - 6 présets + personnalisé</li>
-                            <li><strong>12 Filtres</strong> - N&B, Sépia, Vintage, etc.</li>
-                            <li><strong>Ajustements</strong> - Luminosité, contraste, etc.</li>
-                            <li><strong>Vignette</strong> - Assombrissement des bords</li>
-                            <li><strong>Miroir H/V</strong> - Retournement d'image</li>
-                            <li><strong>Rotation</strong> - Rotation libre</li>
-                            <li><strong>Recadrage</strong> - Crop de la vidéo</li>
-                        </ol>
-                    </div>
-                    <div class="help-section">
-                        <h4>⚡ Contrôle & Export</h4>
-                        <ol start="47">
-                            <li><strong>Vitesse variable</strong> - 0.25x à 4x</li>
-                            <li><strong>Lecture inversée</strong> - Reverse</li>
-                            <li><strong>Export multi-format</strong> - MP4, WebM, GIF, MP3</li>
-                            <li><strong>Export multi-résolution</strong> - 4K à 480p</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Convert Modal -->
-    <div class="modal" id="convert-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Convertir le fichier</h3>
-                <button class="close-btn">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p class="convert-info">Sélectionnez le format de sortie :</p>
-                <div class="convert-options">
-                    <button class="convert-option-btn" data-format="webm">
-                        <span class="format-name">WebM</span>
-                        <span class="format-desc">Compatible navigateur</span>
-                    </button>
-                    <button class="convert-option-btn" data-format="mp4">
-                        <span class="format-name">MP4</span>
-                        <span class="format-desc">Télécharger FFmpeg requis</span>
-                    </button>
-                    <button class="convert-option-btn" data-format="mp3">
-                        <span class="format-name">MP3</span>
-                        <span class="format-desc">Audio uniquement</span>
-                    </button>
-                </div>
-                <div class="convert-note">
-                    <p>Note : La conversion dans le navigateur est limitée au format WebM.</p>
-                    <p>Pour MP4/MP3, utilisez <a href="https://handbrake.fr/" target="_blank">HandBrake</a> ou <a href="https://ffmpeg.org/" target="_blank">FFmpeg</a>.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Crop Modal -->
-    <div class="modal" id="crop-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-crop"></i> Recadrer la vidéo</h3>
-                <button class="close-btn">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="crop-preview">
-                    <canvas id="crop-canvas"></canvas>
-                    <div class="crop-overlay" id="crop-overlay"></div>
-                </div>
-                <div class="crop-presets">
-                    <button class="preset-btn" data-ratio="16:9">16:9</button>
-                    <button class="preset-btn" data-ratio="4:3">4:3</button>
-                    <button class="preset-btn" data-ratio="1:1">1:1</button>
-                    <button class="preset-btn" data-ratio="9:16">9:16</button>
-                    <button class="preset-btn" data-ratio="free">Libre</button>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary close-modal">Annuler</button>
-                <button class="btn btn-primary" id="apply-crop">Appliquer</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notifications -->
+    <!-- Toast -->
     <div class="toast-container" id="toast-container"></div>
-
-    <!-- Context Menu -->
-    <div class="context-menu" id="context-menu">
-        <button data-action="cut-clip"><i class="fas fa-cut"></i> Couper</button>
-        <button data-action="copy-clip"><i class="fas fa-copy"></i> Copier</button>
-        <button data-action="paste-clip"><i class="fas fa-paste"></i> Coller</button>
-        <div class="separator"></div>
-        <button data-action="split-here"><i class="fas fa-columns"></i> Diviser ici</button>
-        <button data-action="delete-clip"><i class="fas fa-trash"></i> Supprimer</button>
-        <div class="separator"></div>
-        <button data-action="add-transition"><i class="fas fa-exchange-alt"></i> Ajouter transition</button>
-        <button data-action="add-effect"><i class="fas fa-magic"></i> Ajouter effet</button>
-        <div class="separator"></div>
-        <button data-action="unlink-clip"><i class="fas fa-unlink"></i> Délier audio/vidéo</button>
-        <button data-action="properties"><i class="fas fa-cog"></i> Propriétés</button>
-    </div>
 
     <script src="app.js"></script>
 </body>
