@@ -47,11 +47,11 @@ class VideoEditor {
             document.getElementById('track-2')
         ];
 
-        // Tools
-        this.toolBtns = document.querySelectorAll('.tool-btn');
-        this.moreToolsBtn = document.getElementById('more-tools-btn');
-        this.toolsPanel = document.getElementById('tools-panel');
-        this.panelToolBtns = document.querySelectorAll('.panel-tool-btn');
+        // FAB Menu
+        this.fabMain = document.getElementById('fab-main');
+        this.fabMenu = document.getElementById('fab-menu');
+        this.fabItems = document.querySelectorAll('.fab-item');
+        this.fabOpen = false;
 
         // Export modal
         this.exportModal = document.getElementById('export-modal');
@@ -102,6 +102,17 @@ class VideoEditor {
         this.splitEndMarker = null;
         this.splitSelection = null;
         this.splitInstruction = null;
+
+        // Speed mode state
+        this.speedMode = false;
+        this.speedStartTime = null;
+        this.speedEndTime = null;
+        this.speedStartMarker = null;
+        this.speedEndMarker = null;
+        this.speedSelection = null;
+
+        // Current playback clip index
+        this.currentClipIndex = 0;
 
         // Initialize
         this.init();
@@ -156,31 +167,31 @@ class VideoEditor {
         // Timeline click to position cut cursor
         this.tracksWrapper.addEventListener('click', (e) => this.handleTimelineClick(e));
 
-        // Scissor button
-        this.scissorBtn.addEventListener('click', () => this.splitAtCursor());
-
-        // Tools - avec support touch
-        this.toolBtns.forEach(btn => {
-            btn.addEventListener('click', () => this.handleTool(btn.dataset.tool));
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                this.handleTool(btn.dataset.tool);
-            });
-        });
-
-        this.panelToolBtns.forEach(btn => {
-            btn.addEventListener('click', () => this.handleTool(btn.dataset.tool));
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                this.handleTool(btn.dataset.tool);
-            });
-        });
-
-        // More tools button
-        this.moreToolsBtn.addEventListener('click', () => this.toggleToolsPanel());
-        this.moreToolsBtn.addEventListener('touchend', (e) => {
+        // FAB Menu
+        this.fabMain.addEventListener('click', () => this.toggleFabMenu());
+        this.fabMain.addEventListener('touchend', (e) => {
             e.preventDefault();
-            this.toggleToolsPanel();
+            this.toggleFabMenu();
+        });
+
+        // FAB Items
+        this.fabItems.forEach(item => {
+            item.addEventListener('click', () => {
+                this.handleTool(item.dataset.tool);
+                this.closeFabMenu();
+            });
+            item.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.handleTool(item.dataset.tool);
+                this.closeFabMenu();
+            });
+        });
+
+        // Close FAB when clicking outside
+        document.addEventListener('click', (e) => {
+            if (this.fabOpen && !e.target.closest('.fab-container')) {
+                this.closeFabMenu();
+            }
         });
 
         // Export modal
@@ -216,9 +227,11 @@ class VideoEditor {
                 const time = x / (this.pixelsPerSecond * this.zoom);
                 const clampedTime = Math.max(0, Math.min(this.videoDuration, time));
 
-                // Si en mode découpe, gérer les marqueurs
+                // Si en mode découpe ou vitesse, gérer les marqueurs
                 if (this.splitMode) {
                     this.handleSplitClick(clampedTime);
+                } else if (this.speedMode) {
+                    this.handleSpeedClick(clampedTime);
                 } else {
                     this.positionCutCursor(x);
                 }
@@ -289,11 +302,73 @@ class VideoEditor {
         this.saveState();
     }
 
+    // ==================== FAB MENU ====================
+
+    toggleFabMenu() {
+        this.fabOpen = !this.fabOpen;
+        this.fabMain.classList.toggle('active', this.fabOpen);
+        this.fabMenu.classList.toggle('active', this.fabOpen);
+    }
+
+    closeFabMenu() {
+        this.fabOpen = false;
+        this.fabMain.classList.remove('active');
+        this.fabMenu.classList.remove('active');
+    }
+
+    setActiveFabItem(tool) {
+        this.fabItems.forEach(item => {
+            item.classList.toggle('active', item.dataset.tool === tool);
+        });
+    }
+
+    clearActiveFabItems() {
+        this.fabItems.forEach(item => item.classList.remove('active'));
+    }
+
     // ==================== PLAYBACK ====================
 
     onTimeUpdate() {
         this.updateTimeDisplay();
         this.updatePlayhead();
+        this.checkClipBoundaries();
+    }
+
+    // Vérifie si on doit sauter à un autre segment
+    checkClipBoundaries() {
+        if (!this.isPlaying) return;
+
+        const currentTime = this.video.currentTime;
+        const sortedClips = this.getSortedClips();
+
+        // Trouver le clip actuel
+        let currentClip = null;
+        for (const clip of sortedClips) {
+            const clipEnd = clip.startTime + clip.duration;
+            if (currentTime >= clip.sourceStart && currentTime < clip.sourceEnd) {
+                currentClip = clip;
+                break;
+            }
+        }
+
+        // Si on n'est pas dans un clip, sauter au prochain
+        if (!currentClip && sortedClips.length > 0) {
+            // Trouver le prochain clip après currentTime
+            for (const clip of sortedClips) {
+                if (clip.sourceStart > currentTime) {
+                    this.video.currentTime = clip.sourceStart;
+                    return;
+                }
+            }
+            // Si aucun clip après, on a fini
+            this.video.pause();
+            this.isPlaying = false;
+            this.updatePlayButton();
+        }
+    }
+
+    getSortedClips() {
+        return [...this.clips].sort((a, b) => a.startTime - b.startTime);
     }
 
     onVideoEnded() {
@@ -322,6 +397,14 @@ class VideoEditor {
         if (this.isPlaying) {
             this.video.pause();
         } else {
+            // Commencer au premier clip si nécessaire
+            if (this.clips.length > 0) {
+                const sortedClips = this.getSortedClips();
+                const firstClip = sortedClips[0];
+                if (this.video.currentTime < firstClip.sourceStart) {
+                    this.video.currentTime = firstClip.sourceStart;
+                }
+            }
             this.video.play();
         }
 
@@ -538,6 +621,8 @@ class VideoEditor {
         // Si en mode découpe, gérer les marqueurs
         if (this.splitMode) {
             this.handleSplitClick(clampedTime);
+        } else if (this.speedMode) {
+            this.handleSpeedClick(clampedTime);
         } else {
             this.positionCutCursor(x);
         }
@@ -838,6 +923,227 @@ class VideoEditor {
         }
     }
 
+    // ==================== SPEED MODE ====================
+
+    toggleSpeedMode() {
+        if (this.speedMode) {
+            this.exitSpeedMode();
+        } else {
+            this.enterSpeedMode();
+        }
+    }
+
+    enterSpeedMode() {
+        this.speedMode = true;
+        this.speedStartTime = null;
+        this.speedEndTime = null;
+
+        this.showSplitInstruction('Cliquez sur le DÉBUT de la zone à modifier');
+        this.showToast('Mode vitesse activé', 'success');
+    }
+
+    exitSpeedMode() {
+        this.speedMode = false;
+        this.speedStartTime = null;
+        this.speedEndTime = null;
+        this.clearSpeedMarkers();
+        this.hideSplitInstruction();
+        this.clearActiveFabItems();
+    }
+
+    handleSpeedClick(time) {
+        if (!this.speedMode) return;
+
+        if (this.speedStartTime === null) {
+            this.speedStartTime = time;
+            this.createSpeedMarker(time, 'start');
+            this.showSplitInstruction('Cliquez sur la FIN de la zone à modifier');
+            this.showToast('Début marqué', 'success');
+        } else if (this.speedEndTime === null) {
+            if (time <= this.speedStartTime) {
+                this.showToast('La fin doit être après le début', 'warning');
+                return;
+            }
+
+            this.speedEndTime = time;
+            this.createSpeedMarker(time, 'end');
+            this.createSpeedSelection();
+            this.hideSplitInstruction();
+
+            // Afficher le panneau de vitesse
+            this.showSpeedOptionsPanel();
+        }
+    }
+
+    createSpeedMarker(time, type) {
+        const marker = document.createElement('div');
+        marker.className = `split-marker ${type}`;
+        marker.style.background = type === 'start' ? 'var(--accent)' : 'var(--accent)';
+        const position = time * this.pixelsPerSecond * this.zoom;
+        marker.style.left = `${position}px`;
+
+        if (type === 'start') {
+            this.speedStartMarker = marker;
+        } else {
+            this.speedEndMarker = marker;
+        }
+
+        this.tracksWrapper.appendChild(marker);
+    }
+
+    createSpeedSelection() {
+        if (this.speedStartTime === null || this.speedEndTime === null) return;
+
+        this.speedSelection = document.createElement('div');
+        this.speedSelection.className = 'split-selection';
+        this.speedSelection.style.background = 'rgba(108, 92, 231, 0.3)';
+        this.speedSelection.style.borderColor = 'var(--accent)';
+
+        const startPos = this.speedStartTime * this.pixelsPerSecond * this.zoom;
+        const endPos = this.speedEndTime * this.pixelsPerSecond * this.zoom;
+
+        this.speedSelection.style.left = `${startPos}px`;
+        this.speedSelection.style.width = `${endPos - startPos}px`;
+
+        this.tracksWrapper.appendChild(this.speedSelection);
+    }
+
+    clearSpeedMarkers() {
+        if (this.speedStartMarker) {
+            this.speedStartMarker.remove();
+            this.speedStartMarker = null;
+        }
+        if (this.speedEndMarker) {
+            this.speedEndMarker.remove();
+            this.speedEndMarker = null;
+        }
+        if (this.speedSelection) {
+            this.speedSelection.remove();
+            this.speedSelection = null;
+        }
+    }
+
+    showSpeedOptionsPanel() {
+        // Supprimer les anciens panneaux
+        const oldPanel = document.querySelector('.speed-options-panel');
+        if (oldPanel) oldPanel.remove();
+
+        const panel = document.createElement('div');
+        panel.className = 'speed-options-panel';
+        panel.innerHTML = `
+            <div class="speed-panel-header">
+                <h4>Choisir la vitesse</h4>
+                <button class="close-speed-panel">&times;</button>
+            </div>
+            <div class="speed-buttons">
+                <button class="speed-btn" data-speed="0.25">0.25x</button>
+                <button class="speed-btn" data-speed="0.5">0.5x</button>
+                <button class="speed-btn" data-speed="0.75">0.75x</button>
+                <button class="speed-btn active" data-speed="1">1x</button>
+                <button class="speed-btn" data-speed="1.5">1.5x</button>
+                <button class="speed-btn" data-speed="2">2x</button>
+                <button class="speed-btn" data-speed="3">3x</button>
+                <button class="speed-btn" data-speed="4">4x</button>
+            </div>
+            <button class="apply-speed-btn">Appliquer</button>
+        `;
+
+        document.body.appendChild(panel);
+
+        // Événements
+        let selectedSpeed = 1;
+
+        panel.querySelectorAll('.speed-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                panel.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedSpeed = parseFloat(btn.dataset.speed);
+            });
+        });
+
+        panel.querySelector('.close-speed-panel').addEventListener('click', () => {
+            panel.remove();
+            this.exitSpeedMode();
+        });
+
+        panel.querySelector('.apply-speed-btn').addEventListener('click', () => {
+            this.applySpeedToSelection(selectedSpeed);
+            panel.remove();
+        });
+    }
+
+    applySpeedToSelection(speed) {
+        // Trouver le clip qui contient la zone
+        const clip = this.clips.find(c => {
+            const clipEnd = c.startTime + c.duration;
+            return c.startTime <= this.speedStartTime && clipEnd >= this.speedEndTime;
+        });
+
+        if (!clip) {
+            this.showToast('Aucun clip dans cette zone', 'warning');
+            this.exitSpeedMode();
+            return;
+        }
+
+        // Appliquer la vitesse au clip (ou créer un segment avec cette vitesse)
+        const index = this.clips.findIndex(c => c.id === clip.id);
+        const newClips = [];
+        const clipEnd = clip.startTime + clip.duration;
+
+        // Avant la zone
+        if (this.speedStartTime > clip.startTime) {
+            const duration = this.speedStartTime - clip.startTime;
+            const sourceRel = (duration / clip.duration) * (clip.sourceEnd - clip.sourceStart);
+            newClips.push({
+                id: this.clipIdCounter++,
+                trackIndex: clip.trackIndex,
+                startTime: clip.startTime,
+                sourceStart: clip.sourceStart,
+                sourceEnd: clip.sourceStart + sourceRel,
+                duration: duration,
+                speed: clip.speed,
+                name: clip.name
+            });
+        }
+
+        // Zone avec nouvelle vitesse
+        const speedDuration = this.speedEndTime - this.speedStartTime;
+        const sourceStart = ((this.speedStartTime - clip.startTime) / clip.duration) * (clip.sourceEnd - clip.sourceStart);
+        const sourceEnd = ((this.speedEndTime - clip.startTime) / clip.duration) * (clip.sourceEnd - clip.sourceStart);
+
+        newClips.push({
+            id: this.clipIdCounter++,
+            trackIndex: clip.trackIndex,
+            startTime: this.speedStartTime,
+            sourceStart: clip.sourceStart + sourceStart,
+            sourceEnd: clip.sourceStart + sourceEnd,
+            duration: speedDuration / speed,
+            speed: speed,
+            name: `${clip.name} (${speed}x)`
+        });
+
+        // Après la zone
+        if (this.speedEndTime < clipEnd) {
+            const duration = clipEnd - this.speedEndTime;
+            newClips.push({
+                id: this.clipIdCounter++,
+                trackIndex: clip.trackIndex,
+                startTime: this.speedEndTime,
+                sourceStart: clip.sourceStart + sourceEnd,
+                sourceEnd: clip.sourceEnd,
+                duration: duration,
+                speed: clip.speed,
+                name: clip.name
+            });
+        }
+
+        this.clips.splice(index, 1, ...newClips);
+        this.renderClips();
+        this.saveState();
+        this.showToast(`Vitesse ${speed}x appliquée`, 'success');
+        this.exitSpeedMode();
+    }
+
     // ==================== DRAG & DROP ====================
 
     startDrag(clip, e) {
@@ -942,15 +1248,33 @@ class VideoEditor {
     // ==================== TOOLS ====================
 
     handleTool(tool) {
+        // Désactiver les autres modes
+        if (tool !== 'split' && this.splitMode) {
+            this.exitSplitMode();
+        }
+        if (tool !== 'speed' && this.speedMode) {
+            this.exitSpeedMode();
+        }
+
         switch (tool) {
             case 'split':
                 this.toggleSplitMode();
+                if (this.splitMode) {
+                    this.setActiveFabItem('split');
+                } else {
+                    this.clearActiveFabItems();
+                }
                 break;
             case 'adjust':
                 this.showAdjustPanel();
                 break;
             case 'speed':
-                this.showSpeedPanel();
+                this.toggleSpeedMode();
+                if (this.speedMode) {
+                    this.setActiveFabItem('speed');
+                } else {
+                    this.clearActiveFabItems();
+                }
                 break;
             case 'delete':
                 this.deleteSelectedSegment();

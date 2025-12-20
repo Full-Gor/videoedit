@@ -651,159 +651,160 @@ body {
     border-radius: 3px;
 }
 
-/* ==================== BOTTOM TOOLBAR ==================== */
-.bottom-toolbar {
+/* ==================== FAB MENU (Floating Action Button) ==================== */
+.fab-container {
+    position: fixed;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    right: 20px;
+    z-index: 1000;
+}
+
+.fab-main {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.3rem;
-    padding: 0.5rem;
-    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
-    background: var(--bg-dark);
-    border-top: 1px solid var(--border-color);
-    flex-shrink: 0;
-    flex-wrap: wrap;
+    box-shadow: 0 4px 20px rgba(108, 92, 231, 0.5);
+    transition: all 0.3s ease;
     position: relative;
-    z-index: 50;
+    z-index: 10;
 }
 
-.tool-btn {
+.fab-main:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 25px rgba(108, 92, 231, 0.6);
+}
+
+.fab-main.active {
+    background: var(--error);
+    transform: rotate(45deg);
+}
+
+.fab-menu {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.2rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    padding: 0.5rem 0.6rem;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: var(--transition);
-    min-width: 55px;
-    min-height: 45px;
+    gap: 12px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
 }
 
-.tool-btn i {
-    font-size: 1.1rem;
+.fab-menu.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 
-.tool-btn span {
-    font-size: 0.6rem;
-    font-weight: 500;
-}
-
-.tool-btn:hover,
-.tool-btn:active {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-}
-
-.tool-btn.active {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-}
-
-/* Bouton Supprimer - rouge */
-.tool-btn[data-tool="delete"] {
-    background: rgba(255, 71, 87, 0.2);
-    border-color: var(--error);
-    color: var(--error);
-}
-
-.tool-btn[data-tool="delete"]:hover,
-.tool-btn[data-tool="delete"]:active {
-    background: var(--error);
-    color: white;
-}
-
-/* Bouton Vitesse - accent */
-.tool-btn[data-tool="speed"] {
-    background: rgba(108, 92, 231, 0.2);
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-.tool-btn[data-tool="speed"]:hover,
-.tool-btn[data-tool="speed"]:active {
-    background: var(--accent);
-    color: white;
-}
-
-.more-btn {
-    background: transparent;
+.fab-item {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
     border: none;
-    color: var(--text-secondary);
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-sm);
+    color: white;
+    font-size: 1.1rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: var(--transition);
+    box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
 }
 
-.more-btn:hover {
+.fab-item::before {
+    content: attr(data-label);
+    position: absolute;
+    right: 60px;
     background: var(--bg-card);
     color: var(--text-primary);
-}
-
-.more-btn.active {
-    color: var(--accent);
-    transform: rotate(180deg);
-}
-
-/* ==================== TOOLS PANEL ==================== */
-.tools-panel {
-    display: none;
-    background: var(--bg-dark);
-    border-top: 1px solid var(--border-color);
-    padding: 1rem;
-    flex-shrink: 0;
-}
-
-.tools-panel.active {
-    display: block;
-}
-
-.tools-panel-content {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.panel-tool-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.35rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    padding: 0.75rem 1.25rem;
+    padding: 6px 12px;
     border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: var(--transition);
-    min-width: 80px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(10px);
+    transition: all 0.2s ease;
+    pointer-events: none;
 }
 
-.panel-tool-btn i {
-    font-size: 1.25rem;
+.fab-item:hover::before {
+    opacity: 1;
+    transform: translateX(0);
 }
 
-.panel-tool-btn span {
-    font-size: 0.7rem;
-    font-weight: 500;
+.fab-item:hover {
+    transform: scale(1.15);
 }
 
-.panel-tool-btn:hover {
+/* Couleurs des boutons FAB */
+.fab-item[data-tool="split"] {
+    background: var(--warning);
+    color: #000;
+}
+
+.fab-item[data-tool="speed"] {
     background: var(--accent);
-    color: white;
-    border-color: var(--accent);
+}
+
+.fab-item[data-tool="delete"] {
+    background: var(--error);
+}
+
+.fab-item[data-tool="adjust"] {
+    background: #00b894;
+}
+
+.fab-item[data-tool="filters"] {
+    background: #e17055;
+}
+
+.fab-item[data-tool="audio"] {
+    background: #0984e3;
+}
+
+/* Animation d'entrée des items */
+.fab-menu.active .fab-item {
+    animation: fabItemIn 0.3s ease forwards;
+}
+
+.fab-menu.active .fab-item:nth-child(1) { animation-delay: 0s; }
+.fab-menu.active .fab-item:nth-child(2) { animation-delay: 0.05s; }
+.fab-menu.active .fab-item:nth-child(3) { animation-delay: 0.1s; }
+.fab-menu.active .fab-item:nth-child(4) { animation-delay: 0.15s; }
+.fab-menu.active .fab-item:nth-child(5) { animation-delay: 0.2s; }
+.fab-menu.active .fab-item:nth-child(6) { animation-delay: 0.25s; }
+
+@keyframes fabItemIn {
+    from {
+        opacity: 0;
+        transform: scale(0) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Mode actif pour les outils */
+.fab-item.active {
+    animation: fabPulse 1.5s infinite !important;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3);
+}
+
+@keyframes fabPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
 }
 
 /* ==================== MODAL ==================== */
@@ -1289,58 +1290,36 @@ body {
         max-width: 50%;
     }
 
-    /* Bottom toolbar mobile - avec safe area */
-    .bottom-toolbar {
-        gap: 0.25rem;
-        padding: 0.4rem;
-        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 25px));
-        justify-content: center;
-        flex-wrap: wrap;
+    /* FAB mobile */
+    .fab-container {
+        bottom: calc(15px + env(safe-area-inset-bottom, 20px));
+        right: 15px;
     }
 
-    .tool-btn {
-        padding: 0.4rem 0.5rem;
-        min-width: 52px;
-        min-height: 44px;
-    }
-
-    .tool-btn i {
-        font-size: 1rem;
-    }
-
-    .tool-btn span {
-        font-size: 0.55rem;
-    }
-
-    .more-btn {
-        width: 40px;
-        height: 40px;
-        flex-shrink: 0;
-    }
-
-    .tools-panel {
-        padding: 0.75rem 0.5rem;
-    }
-
-    .panel-tool-btn {
-        padding: 0.5rem 0.6rem;
-        min-width: 60px;
-        min-height: 50px;
-    }
-
-    .panel-tool-btn i {
-        font-size: 1rem;
-    }
-
-    .panel-tool-btn span {
-        font-size: 0.55rem;
-    }
-
-    /* Floating scissor button - plus gros sur mobile */
-    .floating-scissor-btn {
+    .fab-main {
         width: 56px;
         height: 56px;
-        font-size: 1.5rem;
+        font-size: 1.3rem;
+    }
+
+    .fab-item {
+        width: 46px;
+        height: 46px;
+        font-size: 1rem;
+    }
+
+    .fab-menu {
+        gap: 10px;
+        bottom: 65px;
+    }
+
+    .fab-item::before {
+        display: block;
+        opacity: 1;
+        transform: translateX(0);
+        right: 55px;
+        font-size: 0.7rem;
+        padding: 4px 8px;
     }
 
     .modal-content {
@@ -1552,4 +1531,98 @@ body {
 @keyframes slideDown {
     from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
     to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ==================== SPEED OPTIONS PANEL ==================== */
+.speed-options-panel {
+    position: fixed;
+    bottom: 50%;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    background: var(--bg-dark);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    z-index: 1100;
+    min-width: 280px;
+    animation: scaleIn 0.3s ease;
+}
+
+@keyframes scaleIn {
+    from { transform: translate(-50%, 50%) scale(0.9); opacity: 0; }
+    to { transform: translate(-50%, 50%) scale(1); opacity: 1; }
+}
+
+.speed-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.speed-panel-header h4 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.close-speed-panel {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.close-speed-panel:hover {
+    color: var(--error);
+}
+
+.speed-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.speed-btn {
+    padding: 0.75rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.speed-btn:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.speed-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.apply-speed-btn {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.apply-speed-btn:hover {
+    background: var(--accent-hover);
 }

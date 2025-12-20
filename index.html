@@ -109,57 +109,31 @@
                     <div class="track-label">Audio</div>
                 </div>
             </div>
-            <!-- Bouton ciseau flottant -->
-            <button class="floating-scissor-btn" id="scissor-btn">
-                <i class="fas fa-cut"></i>
-            </button>
         </div>
 
-        <!-- Barre d'outils du bas -->
-        <div class="bottom-toolbar">
-            <button class="tool-btn" data-tool="split">
-                <i class="fas fa-cut"></i>
-                <span>Diviser</span>
+        <!-- Menu radial flottant -->
+        <div class="fab-container" id="fab-container">
+            <button class="fab-main" id="fab-main">
+                <i class="fas fa-plus"></i>
             </button>
-            <button class="tool-btn" data-tool="adjust">
-                <i class="fas fa-sliders-h"></i>
-                <span>Ajuster</span>
-            </button>
-            <button class="tool-btn" data-tool="speed">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Vitesse</span>
-            </button>
-            <button class="tool-btn" data-tool="delete">
-                <i class="fas fa-trash"></i>
-                <span>Supprimer</span>
-            </button>
-            <button class="tool-btn" data-tool="transform">
-                <i class="fas fa-crop"></i>
-                <span>Transf.</span>
-            </button>
-            <button class="more-btn" id="more-tools-btn">
-                <i class="fas fa-chevron-down"></i>
-            </button>
-        </div>
-
-        <!-- Panel d'outils supplémentaires (caché par défaut) -->
-        <div class="tools-panel" id="tools-panel">
-            <div class="tools-panel-content">
-                <button class="panel-tool-btn" data-tool="filters">
+            <div class="fab-menu" id="fab-menu">
+                <button class="fab-item" data-tool="split" data-label="Diviser">
+                    <i class="fas fa-cut"></i>
+                </button>
+                <button class="fab-item" data-tool="speed" data-label="Vitesse">
+                    <i class="fas fa-tachometer-alt"></i>
+                </button>
+                <button class="fab-item" data-tool="delete" data-label="Supprimer">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <button class="fab-item" data-tool="adjust" data-label="Ajuster">
+                    <i class="fas fa-sliders-h"></i>
+                </button>
+                <button class="fab-item" data-tool="filters" data-label="Filtres">
                     <i class="fas fa-palette"></i>
-                    <span>Filtres</span>
                 </button>
-                <button class="panel-tool-btn" data-tool="text">
-                    <i class="fas fa-font"></i>
-                    <span>Texte</span>
-                </button>
-                <button class="panel-tool-btn" data-tool="audio">
+                <button class="fab-item" data-tool="audio" data-label="Audio">
                     <i class="fas fa-volume-up"></i>
-                    <span>Audio</span>
-                </button>
-                <button class="panel-tool-btn" data-tool="rotate">
-                    <i class="fas fa-sync"></i>
-                    <span>Rotation</span>
                 </button>
             </div>
         </div>
