@@ -1114,11 +1114,13 @@ class VideoEditor {
         this.startExportBtn.disabled = true;
 
         try {
-            let width, height;
+            let width, height, bitrate;
             switch (quality) {
-                case '1080p': width = 1920; height = 1080; break;
-                case '720p': width = 1280; height = 720; break;
-                case '480p': width = 854; height = 480; break;
+                case '4k': width = 3840; height = 2160; bitrate = 35000000; break;
+                case '1080p': width = 1920; height = 1080; bitrate = 8000000; break;
+                case '720p': width = 1280; height = 720; bitrate = 5000000; break;
+                case '480p': width = 854; height = 480; bitrate = 2500000; break;
+                default: width = 1920; height = 1080; bitrate = 8000000;
             }
 
             const canvas = document.createElement('canvas');
@@ -1129,7 +1131,7 @@ class VideoEditor {
             const stream = canvas.captureStream(30);
             const mediaRecorder = new MediaRecorder(stream, {
                 mimeType: 'video/webm;codecs=vp9',
-                videoBitsPerSecond: quality === '1080p' ? 8000000 : quality === '720p' ? 5000000 : 2500000
+                videoBitsPerSecond: bitrate
             });
 
             const chunks = [];
