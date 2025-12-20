@@ -654,8 +654,8 @@ body {
 /* ==================== FAB MENU (Floating Action Button) - RADIAL ==================== */
 .fab-container {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
+    bottom: 70px;
+    left: 35px;
     z-index: 100;
 }
 
@@ -1400,8 +1400,8 @@ body {
 
     /* FAB mobile - radial */
     .fab-container {
-        bottom: 15px;
-        left: 15px;
+        bottom: 65px;
+        left: 30px;
     }
 
     .fab-main {
