@@ -86,10 +86,9 @@
         <div class="timeline-container" id="timeline-container">
             <div class="time-ruler" id="time-ruler"></div>
             <div class="timeline-tracks-wrapper" id="timeline-tracks-wrapper">
-                <!-- Curseur ciseau -->
-                <div class="scissor-cursor" id="scissor-cursor">
-                    <i class="fas fa-cut"></i>
-                    <div class="scissor-line"></div>
+                <!-- Curseur de position -->
+                <div class="cut-cursor" id="cut-cursor">
+                    <div class="cut-cursor-line"></div>
                 </div>
                 <!-- Playhead -->
                 <div class="playhead" id="playhead"></div>
@@ -106,6 +105,10 @@
                     <div class="track-label">Audio</div>
                 </div>
             </div>
+            <!-- Bouton ciseau flottant -->
+            <button class="floating-scissor-btn" id="scissor-btn">
+                <i class="fas fa-cut"></i>
+            </button>
         </div>
 
         <!-- Barre d'outils du bas -->

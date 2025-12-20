@@ -34,7 +34,8 @@ class VideoEditor {
         this.timeRuler = document.getElementById('time-ruler');
         this.tracksWrapper = document.getElementById('timeline-tracks-wrapper');
         this.playhead = document.getElementById('playhead');
-        this.scissorCursor = document.getElementById('scissor-cursor');
+        this.cutCursor = document.getElementById('cut-cursor');
+        this.scissorBtn = document.getElementById('scissor-btn');
 
         // Tracks
         this.tracks = [
@@ -70,14 +71,14 @@ class VideoEditor {
         this.zoom = 1;
         this.pixelsPerSecond = 100;
 
-        // Clips state - array of clips on different tracks
+        // Clips state
         this.clips = [];
         this.clipIdCounter = 0;
         this.selectedClip = null;
 
-        // Scissor cursor state
-        this.scissorTime = 0;
-        this.scissorVisible = false;
+        // Cut cursor state
+        this.cutTime = 0;
+        this.cutCursorVisible = false;
 
         // Drag state
         this.isDragging = false;
@@ -85,7 +86,6 @@ class VideoEditor {
         this.dragStartX = 0;
         this.dragStartY = 0;
         this.dragOffsetX = 0;
-        this.longPressTimer = null;
 
         // History
         this.history = [];
@@ -126,10 +126,11 @@ class VideoEditor {
         this.zoomOutBtn.addEventListener('click', () => this.zoomOut());
         this.zoomFitBtn.addEventListener('click', () => this.zoomFit());
 
-        // Timeline click for scissor cursor
+        // Timeline click to position cut cursor
         this.tracksWrapper.addEventListener('click', (e) => this.handleTimelineClick(e));
-        this.tracksWrapper.addEventListener('mousemove', (e) => this.handleTimelineMouseMove(e));
-        this.tracksWrapper.addEventListener('mouseleave', () => this.hideScissorCursor());
+
+        // Scissor button
+        this.scissorBtn.addEventListener('click', () => this.splitAtCursor());
 
         // Tools
         this.toolBtns.forEach(btn => {
@@ -164,38 +165,25 @@ class VideoEditor {
 
     setupTouchEvents() {
         // Touch events for timeline
-        let touchStartX = 0;
-        let touchStartTime = 0;
-
         this.tracksWrapper.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
-            touchStartTime = Date.now();
-
-            // Show scissor at touch position
-            const rect = this.tracksWrapper.getBoundingClientRect();
-            const x = e.touches[0].clientX - rect.left;
-            this.showScissorCursor(x);
-        }, { passive: true });
-
-        this.tracksWrapper.addEventListener('touchmove', (e) => {
-            const rect = this.tracksWrapper.getBoundingClientRect();
-            const x = e.touches[0].clientX - rect.left;
-            this.showScissorCursor(x);
-        }, { passive: true });
-
-        this.tracksWrapper.addEventListener('touchend', (e) => {
-            const touchDuration = Date.now() - touchStartTime;
-
-            // Short tap = position scissor, long press handled by clip
-            if (touchDuration < 300) {
-                // Keep scissor visible at this position
+            // Only handle if not on a clip
+            if (!e.target.closest('.timeline-clip')) {
+                const rect = this.tracksWrapper.getBoundingClientRect();
+                const x = e.touches[0].clientX - rect.left + this.timelineContainer.scrollLeft;
+                this.positionCutCursor(x);
             }
-        });
+        }, { passive: true });
 
         // Touch for play button
         this.playBtn.addEventListener('touchend', (e) => {
             e.preventDefault();
             this.togglePlay();
+        });
+
+        // Touch for scissor button
+        this.scissorBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.splitAtCursor();
         });
     }
 
@@ -236,12 +224,12 @@ class VideoEditor {
         this.clips = [{
             id: this.clipIdCounter++,
             trackIndex: 0,
-            startTime: 0,           // Position on timeline
-            sourceStart: 0,         // Start in source video
-            sourceEnd: this.videoDuration,  // End in source video
+            startTime: 0,
+            sourceStart: 0,
+            sourceEnd: this.videoDuration,
             duration: this.videoDuration,
             speed: 1,
-            name: this.videoFile.name.substring(0, 20)
+            name: this.videoFile.name.substring(0, 15)
         }];
 
         this.updateTimeDisplay();
@@ -320,17 +308,14 @@ class VideoEditor {
     // ==================== TIMELINE RENDERING ====================
 
     renderTimeline() {
-        // Clear previous rulers
         this.timeRuler.innerHTML = '';
 
         if (!this.videoDuration) return;
 
-        // Calculate timeline width
         const timelineWidth = this.videoDuration * this.pixelsPerSecond * this.zoom;
         this.timeRuler.style.width = `${timelineWidth}px`;
         this.tracksWrapper.style.width = `${timelineWidth}px`;
 
-        // Create time markers
         const markerInterval = this.calculateMarkerInterval(this.videoDuration);
 
         for (let t = 0; t <= this.videoDuration; t += markerInterval) {
@@ -353,7 +338,6 @@ class VideoEditor {
 
     updatePlayhead() {
         if (!this.videoDuration) return;
-
         const position = this.video.currentTime * this.pixelsPerSecond * this.zoom;
         this.playhead.style.left = `${position}px`;
     }
@@ -361,13 +345,11 @@ class VideoEditor {
     // ==================== CLIPS RENDERING ====================
 
     renderClips() {
-        // Clear all clips from tracks
         this.tracks.forEach(track => {
             const existingClips = track.querySelectorAll('.timeline-clip');
             existingClips.forEach(clip => clip.remove());
         });
 
-        // Render each clip
         this.clips.forEach(clip => {
             this.renderClip(clip);
         });
@@ -382,14 +364,12 @@ class VideoEditor {
         clipEl.dataset.clipId = clip.id;
         clipEl.dataset.speed = clip.speed;
 
-        // Calculate position and width
         const left = clip.startTime * this.pixelsPerSecond * this.zoom;
         const width = clip.duration * this.pixelsPerSecond * this.zoom;
 
         clipEl.style.left = `${left}px`;
         clipEl.style.width = `${width}px`;
 
-        // Clip content
         clipEl.innerHTML = `
             <div class="resize-handle left"></div>
             <div class="clip-content">
@@ -399,12 +379,11 @@ class VideoEditor {
             <div class="resize-handle right"></div>
         `;
 
-        // Selection
         if (this.selectedClip && this.selectedClip.id === clip.id) {
             clipEl.classList.add('selected');
         }
 
-        // Click to select
+        // Click to select clip
         clipEl.addEventListener('click', (e) => {
             e.stopPropagation();
             this.selectClip(clip);
@@ -417,7 +396,7 @@ class VideoEditor {
             this.startDrag(clip, e);
         });
 
-        // Touch events for long press drag
+        // Touch events
         let longPressTimer = null;
         let touchStartPos = null;
 
@@ -428,11 +407,10 @@ class VideoEditor {
             // Select on touch
             this.selectClip(clip);
 
-            // Start long press timer for drag
+            // Long press for drag
             longPressTimer = setTimeout(() => {
                 clipEl.classList.add('dragging');
                 this.startTouchDrag(clip, e);
-                // Haptic feedback if available
                 if (navigator.vibrate) navigator.vibrate(50);
             }, 500);
         }, { passive: false });
@@ -442,19 +420,17 @@ class VideoEditor {
             const dx = Math.abs(touch.clientX - touchStartPos.x);
             const dy = Math.abs(touch.clientY - touchStartPos.y);
 
-            // Cancel long press if moved too much
             if (dx > 10 || dy > 10) {
                 clearTimeout(longPressTimer);
             }
 
-            // If dragging, handle move
             if (this.isDragging && this.dragClip && this.dragClip.id === clip.id) {
                 e.preventDefault();
                 this.handleTouchMove(e);
             }
         }, { passive: false });
 
-        clipEl.addEventListener('touchend', (e) => {
+        clipEl.addEventListener('touchend', () => {
             clearTimeout(longPressTimer);
             if (this.isDragging) {
                 this.endDrag();
@@ -465,60 +441,143 @@ class VideoEditor {
     }
 
     selectClip(clip) {
-        // Deselect previous
         const prevSelected = document.querySelector('.timeline-clip.selected');
         if (prevSelected) prevSelected.classList.remove('selected');
 
-        // Select new
         this.selectedClip = clip;
         const clipEl = document.querySelector(`[data-clip-id="${clip.id}"]`);
         if (clipEl) clipEl.classList.add('selected');
+
+        // Check if we should show scissor button
+        this.updateScissorButton();
     }
 
     deselectClip() {
         const selected = document.querySelector('.timeline-clip.selected');
         if (selected) selected.classList.remove('selected');
         this.selectedClip = null;
+        this.hideScissorButton();
     }
 
-    // ==================== SCISSOR CURSOR ====================
+    // ==================== CUT CURSOR ====================
 
     handleTimelineClick(e) {
-        // If clicked on a clip, don't show scissor
+        // If clicked on a clip, don't position cursor
         if (e.target.closest('.timeline-clip')) return;
 
         const rect = this.tracksWrapper.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        this.showScissorCursor(x);
-
-        // Update video position to scissor time
-        this.seekTo(this.scissorTime);
+        const x = e.clientX - rect.left + this.timelineContainer.scrollLeft;
+        this.positionCutCursor(x);
     }
 
-    handleTimelineMouseMove(e) {
-        if (this.isDragging) return;
-        if (e.target.closest('.timeline-clip')) {
-            this.hideScissorCursor();
+    positionCutCursor(x) {
+        this.cutTime = x / (this.pixelsPerSecond * this.zoom);
+        this.cutTime = Math.max(0, Math.min(this.videoDuration, this.cutTime));
+
+        this.cutCursor.style.left = `${x}px`;
+        this.cutCursor.classList.add('visible');
+        this.cutCursorVisible = true;
+
+        // Also seek video to this position
+        this.seekTo(this.cutTime);
+
+        // Check if we should show scissor button
+        this.updateScissorButton();
+    }
+
+    hideCutCursor() {
+        this.cutCursor.classList.remove('visible');
+        this.cutCursorVisible = false;
+        this.hideScissorButton();
+    }
+
+    // ==================== SCISSOR BUTTON ====================
+
+    updateScissorButton() {
+        // Show scissor button if:
+        // 1. A clip is selected
+        // 2. Cut cursor is visible
+        // 3. Cut cursor is within the selected clip
+        if (!this.selectedClip || !this.cutCursorVisible) {
+            this.hideScissorButton();
             return;
         }
 
-        const rect = this.tracksWrapper.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        this.showScissorCursor(x);
+        const clipEnd = this.selectedClip.startTime + this.selectedClip.duration;
+        const isWithinClip = this.cutTime > this.selectedClip.startTime && this.cutTime < clipEnd;
+
+        if (isWithinClip) {
+            this.showScissorButton();
+        } else {
+            this.hideScissorButton();
+        }
     }
 
-    showScissorCursor(x) {
-        this.scissorTime = x / (this.pixelsPerSecond * this.zoom);
-        this.scissorTime = Math.max(0, Math.min(this.videoDuration, this.scissorTime));
-
-        this.scissorCursor.style.left = `${x}px`;
-        this.scissorCursor.classList.add('visible');
-        this.scissorVisible = true;
+    showScissorButton() {
+        // Position the scissor button above the cut cursor
+        const cursorX = this.cutTime * this.pixelsPerSecond * this.zoom;
+        this.scissorBtn.style.left = `${cursorX - 25}px`;
+        this.scissorBtn.style.top = '-60px';
+        this.scissorBtn.classList.add('visible');
     }
 
-    hideScissorCursor() {
-        this.scissorCursor.classList.remove('visible');
-        this.scissorVisible = false;
+    hideScissorButton() {
+        this.scissorBtn.classList.remove('visible');
+    }
+
+    // ==================== SPLIT ====================
+
+    splitAtCursor() {
+        if (!this.selectedClip || !this.cutCursorVisible) {
+            this.showToast('Positionnez le curseur et sélectionnez un clip', 'warning');
+            return;
+        }
+
+        const clipEnd = this.selectedClip.startTime + this.selectedClip.duration;
+        if (this.cutTime <= this.selectedClip.startTime || this.cutTime >= clipEnd) {
+            this.showToast('Le curseur doit être sur le clip sélectionné', 'warning');
+            return;
+        }
+
+        // Calculate split
+        const relativeTime = this.cutTime - this.selectedClip.startTime;
+        const sourceRelativeTime = (relativeTime / this.selectedClip.duration) *
+            (this.selectedClip.sourceEnd - this.selectedClip.sourceStart);
+
+        // Create two new clips
+        const clip1 = {
+            id: this.clipIdCounter++,
+            trackIndex: this.selectedClip.trackIndex,
+            startTime: this.selectedClip.startTime,
+            sourceStart: this.selectedClip.sourceStart,
+            sourceEnd: this.selectedClip.sourceStart + sourceRelativeTime,
+            duration: relativeTime,
+            speed: this.selectedClip.speed,
+            name: this.selectedClip.name + ' (1)'
+        };
+
+        const clip2 = {
+            id: this.clipIdCounter++,
+            trackIndex: this.selectedClip.trackIndex,
+            startTime: this.cutTime,
+            sourceStart: this.selectedClip.sourceStart + sourceRelativeTime,
+            sourceEnd: this.selectedClip.sourceEnd,
+            duration: this.selectedClip.duration - relativeTime,
+            speed: this.selectedClip.speed,
+            name: this.selectedClip.name + ' (2)'
+        };
+
+        // Replace original with new clips
+        const index = this.clips.findIndex(c => c.id === this.selectedClip.id);
+        this.clips.splice(index, 1, clip1, clip2);
+
+        // Select second clip
+        this.selectedClip = clip2;
+        this.hideScissorButton();
+
+        this.renderClips();
+        this.saveState();
+        this.showToast('Clip divisé !', 'success');
     }
 
     // ==================== DRAG & DROP ====================
@@ -557,15 +616,11 @@ class VideoEditor {
         const clipEl = document.querySelector(`[data-clip-id="${this.dragClip.id}"]`);
         if (!clipEl) return;
 
-        // Calculate new position
         const wrapperRect = this.tracksWrapper.getBoundingClientRect();
-        const x = e.clientX - wrapperRect.left - this.dragOffsetX;
+        const x = e.clientX - wrapperRect.left - this.dragOffsetX + this.timelineContainer.scrollLeft;
         const y = e.clientY - wrapperRect.top;
 
-        // Update clip position visually
         clipEl.style.left = `${Math.max(0, x)}px`;
-
-        // Determine which track we're over
         this.updateDropTarget(y);
     }
 
@@ -577,7 +632,7 @@ class VideoEditor {
         if (!clipEl) return;
 
         const wrapperRect = this.tracksWrapper.getBoundingClientRect();
-        const x = touch.clientX - wrapperRect.left - this.dragOffsetX;
+        const x = touch.clientX - wrapperRect.left - this.dragOffsetX + this.timelineContainer.scrollLeft;
         const y = touch.clientY - wrapperRect.top;
 
         clipEl.style.left = `${Math.max(0, x)}px`;
@@ -585,10 +640,8 @@ class VideoEditor {
     }
 
     updateDropTarget(y) {
-        // Clear previous drop target
         this.tracks.forEach(track => track.classList.remove('drop-target'));
 
-        // Find which track we're over
         let trackIndex = Math.floor(y / 55);
         trackIndex = Math.max(0, Math.min(this.tracks.length - 1, trackIndex));
 
@@ -596,7 +649,7 @@ class VideoEditor {
         this.dragClip.targetTrack = trackIndex;
     }
 
-    handleMouseUp(e) {
+    handleMouseUp() {
         if (!this.isDragging) return;
         this.endDrag();
     }
@@ -608,27 +661,22 @@ class VideoEditor {
         if (clipEl) {
             clipEl.classList.remove('dragging');
 
-            // Get final position
             const left = parseFloat(clipEl.style.left);
             const newStartTime = left / (this.pixelsPerSecond * this.zoom);
 
-            // Update clip data
             this.dragClip.startTime = Math.max(0, newStartTime);
 
-            // Change track if needed
             if (this.dragClip.targetTrack !== undefined) {
                 this.dragClip.trackIndex = this.dragClip.targetTrack;
                 delete this.dragClip.targetTrack;
             }
         }
 
-        // Clear drop targets
         this.tracks.forEach(track => track.classList.remove('drop-target'));
 
         this.isDragging = false;
         this.dragClip = null;
 
-        // Re-render and save
         this.renderClips();
         this.saveState();
     }
@@ -638,7 +686,7 @@ class VideoEditor {
     handleTool(tool) {
         switch (tool) {
             case 'split':
-                this.splitAtScissor();
+                this.splitAtCursor();
                 break;
             case 'adjust':
                 this.showAdjustPanel();
@@ -667,79 +715,14 @@ class VideoEditor {
         }
     }
 
-    // ==================== SPLIT ====================
-
-    splitAtScissor() {
-        if (!this.scissorVisible) {
-            this.showToast('Touchez la timeline pour positionner le curseur de coupe', 'warning');
-            return;
-        }
-
-        const splitTime = this.scissorTime;
-
-        // Find clip at scissor position
-        let clipToSplit = null;
-        for (const clip of this.clips) {
-            const clipEnd = clip.startTime + clip.duration;
-            if (splitTime > clip.startTime && splitTime < clipEnd) {
-                clipToSplit = clip;
-                break;
-            }
-        }
-
-        if (!clipToSplit) {
-            this.showToast('Positionnez le curseur sur un clip pour le diviser', 'warning');
-            return;
-        }
-
-        // Calculate split point relative to clip
-        const relativeTime = splitTime - clipToSplit.startTime;
-        const sourceRelativeTime = (relativeTime / clipToSplit.duration) * (clipToSplit.sourceEnd - clipToSplit.sourceStart);
-
-        // Create two new clips
-        const clip1 = {
-            id: this.clipIdCounter++,
-            trackIndex: clipToSplit.trackIndex,
-            startTime: clipToSplit.startTime,
-            sourceStart: clipToSplit.sourceStart,
-            sourceEnd: clipToSplit.sourceStart + sourceRelativeTime,
-            duration: relativeTime,
-            speed: clipToSplit.speed,
-            name: clipToSplit.name + ' (1)'
-        };
-
-        const clip2 = {
-            id: this.clipIdCounter++,
-            trackIndex: clipToSplit.trackIndex,
-            startTime: splitTime,
-            sourceStart: clipToSplit.sourceStart + sourceRelativeTime,
-            sourceEnd: clipToSplit.sourceEnd,
-            duration: clipToSplit.duration - relativeTime,
-            speed: clipToSplit.speed,
-            name: clipToSplit.name + ' (2)'
-        };
-
-        // Remove original clip and add new ones
-        const index = this.clips.findIndex(c => c.id === clipToSplit.id);
-        this.clips.splice(index, 1, clip1, clip2);
-
-        // Select the second clip
-        this.selectClip(clip2);
-
-        this.renderClips();
-        this.saveState();
-        this.showToast('Clip divisé en deux segments', 'success');
-    }
-
     // ==================== DELETE ====================
 
     deleteSelectedClip() {
         if (!this.selectedClip) {
-            this.showToast('Sélectionnez d\'abord un clip à supprimer', 'warning');
+            this.showToast('Sélectionnez d\'abord un clip', 'warning');
             return;
         }
 
-        // Don't allow deleting the last clip
         if (this.clips.length === 1) {
             this.showToast('Impossible de supprimer le dernier clip', 'warning');
             return;
@@ -749,6 +732,7 @@ class VideoEditor {
         if (index !== -1) {
             this.clips.splice(index, 1);
             this.selectedClip = null;
+            this.hideScissorButton();
             this.renderClips();
             this.saveState();
             this.showToast('Clip supprimé', 'success');
@@ -781,7 +765,6 @@ class VideoEditor {
                 const newSpeed = parseFloat(btn.dataset.speed);
                 this.setClipSpeed(this.selectedClip, newSpeed);
 
-                // Update UI
                 panel.querySelectorAll('.speed-preset-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
 
@@ -791,7 +774,6 @@ class VideoEditor {
     }
 
     setClipSpeed(clip, speed) {
-        // Adjust duration based on speed
         const originalDuration = (clip.sourceEnd - clip.sourceStart) / clip.speed;
         clip.speed = speed;
         clip.duration = originalDuration / speed;
@@ -805,24 +787,15 @@ class VideoEditor {
     showAdjustPanel() {
         const panel = this.createToolPanel('Ajuster', `
             <div class="slider-control">
-                <label>
-                    <span>Luminosité</span>
-                    <span id="brightness-value">100%</span>
-                </label>
+                <label><span>Luminosité</span><span id="brightness-value">100%</span></label>
                 <input type="range" id="brightness-slider" min="50" max="150" value="100">
             </div>
             <div class="slider-control">
-                <label>
-                    <span>Contraste</span>
-                    <span id="contrast-value">100%</span>
-                </label>
+                <label><span>Contraste</span><span id="contrast-value">100%</span></label>
                 <input type="range" id="contrast-slider" min="50" max="150" value="100">
             </div>
             <div class="slider-control">
-                <label>
-                    <span>Saturation</span>
-                    <span id="saturation-value">100%</span>
-                </label>
+                <label><span>Saturation</span><span id="saturation-value">100%</span></label>
                 <input type="range" id="saturation-slider" min="0" max="200" value="100">
             </div>
         `);
@@ -836,11 +809,7 @@ class VideoEditor {
             document.getElementById('contrast-value').textContent = contrast + '%';
             document.getElementById('saturation-value').textContent = saturation + '%';
 
-            this.video.style.filter = `
-                brightness(${brightness}%)
-                contrast(${contrast}%)
-                saturate(${saturation}%)
-            `;
+            this.video.style.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
         };
 
         panel.querySelectorAll('input[type="range"]').forEach(slider => {
@@ -851,44 +820,23 @@ class VideoEditor {
     showTransformPanel() {
         const panel = this.createToolPanel('Transformer', `
             <div class="speed-presets">
-                <button class="speed-preset-btn" data-action="flip-h">
-                    <i class="fas fa-arrows-alt-h"></i> Miroir H
-                </button>
-                <button class="speed-preset-btn" data-action="flip-v">
-                    <i class="fas fa-arrows-alt-v"></i> Miroir V
-                </button>
-                <button class="speed-preset-btn" data-action="rotate-left">
-                    <i class="fas fa-undo"></i> -90°
-                </button>
-                <button class="speed-preset-btn" data-action="rotate-right">
-                    <i class="fas fa-redo"></i> +90°
-                </button>
+                <button class="speed-preset-btn" data-action="flip-h">Miroir H</button>
+                <button class="speed-preset-btn" data-action="flip-v">Miroir V</button>
+                <button class="speed-preset-btn" data-action="rotate-left">-90°</button>
+                <button class="speed-preset-btn" data-action="rotate-right">+90°</button>
             </div>
         `);
 
-        let rotation = 0;
-        let scaleX = 1;
-        let scaleY = 1;
+        let rotation = 0, scaleX = 1, scaleY = 1;
 
         panel.querySelectorAll('.speed-preset-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const action = btn.dataset.action;
-
-                switch (action) {
-                    case 'flip-h':
-                        scaleX *= -1;
-                        break;
-                    case 'flip-v':
-                        scaleY *= -1;
-                        break;
-                    case 'rotate-left':
-                        rotation -= 90;
-                        break;
-                    case 'rotate-right':
-                        rotation += 90;
-                        break;
+                switch (btn.dataset.action) {
+                    case 'flip-h': scaleX *= -1; break;
+                    case 'flip-v': scaleY *= -1; break;
+                    case 'rotate-left': rotation -= 90; break;
+                    case 'rotate-right': rotation += 90; break;
                 }
-
                 this.video.style.transform = `rotate(${rotation}deg) scale(${scaleX}, ${scaleY})`;
                 this.showToast('Transformation appliquée', 'success');
             });
@@ -902,17 +850,13 @@ class VideoEditor {
             { name: 'Sépia', filter: 'sepia(100%)' },
             { name: 'Vintage', filter: 'sepia(50%) contrast(120%)' },
             { name: 'Froid', filter: 'saturate(80%) hue-rotate(180deg)' },
-            { name: 'Chaud', filter: 'saturate(120%) hue-rotate(-20deg)' },
-            { name: 'Vif', filter: 'saturate(150%) contrast(110%)' },
-            { name: 'Fondu', filter: 'contrast(80%) brightness(110%)' }
+            { name: 'Chaud', filter: 'saturate(120%) hue-rotate(-20deg)' }
         ];
 
         const panel = this.createToolPanel('Filtres', `
             <div class="speed-presets" style="flex-wrap: wrap;">
                 ${filters.map((f, i) => `
-                    <button class="speed-preset-btn ${i === 0 ? 'active' : ''}" data-filter="${f.filter}">
-                        ${f.name}
-                    </button>
+                    <button class="speed-preset-btn ${i === 0 ? 'active' : ''}" data-filter="${f.filter}">${f.name}</button>
                 `).join('')}
             </div>
         `);
@@ -930,10 +874,7 @@ class VideoEditor {
     showAudioPanel() {
         const panel = this.createToolPanel('Audio', `
             <div class="slider-control">
-                <label>
-                    <span>Volume</span>
-                    <span id="volume-value">100%</span>
-                </label>
+                <label><span>Volume</span><span id="volume-value">100%</span></label>
                 <input type="range" id="volume-slider" min="0" max="100" value="100">
             </div>
             <div class="speed-presets">
@@ -980,9 +921,7 @@ class VideoEditor {
                 <h4>${title}</h4>
                 <button class="tool-options-close">&times;</button>
             </div>
-            <div class="tool-options-body">
-                ${content}
-            </div>
+            <div class="tool-options-body">${content}</div>
         `;
 
         document.body.appendChild(panel);
@@ -1020,6 +959,10 @@ class VideoEditor {
         this.renderTimeline();
         this.renderClips();
         this.updatePlayhead();
+        if (this.cutCursorVisible) {
+            const cursorX = this.cutTime * this.pixelsPerSecond * this.zoom;
+            this.cutCursor.style.left = `${cursorX}px`;
+        }
     }
 
     // ==================== HISTORY ====================
@@ -1092,6 +1035,7 @@ class VideoEditor {
                 clips.forEach(c => c.remove());
             });
 
+            this.hideCutCursor();
             this.editorScreen.classList.remove('active');
             this.homeScreen.classList.remove('hidden');
             this.fileInput.value = '';
@@ -1116,7 +1060,6 @@ class VideoEditor {
     }
 
     async startExport() {
-        const format = this.exportFormat.value;
         const quality = this.exportQuality.value;
 
         this.exportProgress.classList.add('active');
@@ -1135,10 +1078,9 @@ class VideoEditor {
             canvas.height = height;
             const ctx = canvas.getContext('2d');
 
-            const mimeType = 'video/webm;codecs=vp9';
             const stream = canvas.captureStream(30);
             const mediaRecorder = new MediaRecorder(stream, {
-                mimeType: mimeType,
+                mimeType: 'video/webm;codecs=vp9',
                 videoBitsPerSecond: quality === '1080p' ? 8000000 : quality === '720p' ? 5000000 : 2500000
             });
 
@@ -1150,7 +1092,7 @@ class VideoEditor {
 
             mediaRecorder.onstop = async () => {
                 const blob = new Blob(chunks, { type: 'video/webm' });
-                await this.saveFile(blob, `video-export.webm`);
+                await this.saveFile(blob, 'video-export.webm');
 
                 this.progressFill.style.width = '100%';
                 this.progressText.textContent = '100% - Terminé!';
@@ -1195,7 +1137,7 @@ class VideoEditor {
 
         } catch (error) {
             console.error('Export error:', error);
-            this.showToast('Erreur lors de l\'export: ' + error.message, 'error');
+            this.showToast('Erreur: ' + error.message, 'error');
             this.startExportBtn.disabled = false;
         }
     }
@@ -1205,7 +1147,7 @@ class VideoEditor {
             if ('showSaveFilePicker' in window) {
                 const handle = await window.showSaveFilePicker({
                     suggestedName: filename,
-                    types: [{ description: 'Video File', accept: { 'video/*': ['.webm', '.mp4'] } }]
+                    types: [{ description: 'Video File', accept: { 'video/*': ['.webm'] } }]
                 });
                 const writable = await handle.createWritable();
                 await writable.write(blob);
@@ -1255,17 +1197,13 @@ class VideoEditor {
                 break;
             case 's':
                 if (!e.ctrlKey && !e.metaKey) {
-                    this.splitAtScissor();
+                    this.splitAtCursor();
                 }
                 break;
             case 'z':
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
-                    if (e.shiftKey) {
-                        this.redo();
-                    } else {
-                        this.undo();
-                    }
+                    e.shiftKey ? this.redo() : this.undo();
                 }
                 break;
             case 'y':
@@ -1294,11 +1232,7 @@ class VideoEditor {
         if (type === 'error') icon = 'fa-exclamation-circle';
         if (type === 'warning') icon = 'fa-exclamation-triangle';
 
-        toast.innerHTML = `
-            <i class="fas ${icon}"></i>
-            <span>${message}</span>
-        `;
-
+        toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
         this.toastContainer.appendChild(toast);
 
         setTimeout(() => {
