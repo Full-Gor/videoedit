@@ -103,6 +103,10 @@ class VideoEditor {
     bindEvents() {
         // Import
         this.importBtn.addEventListener('click', () => this.fileInput.click());
+        this.importBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.fileInput.click();
+        });
         this.fileInput.addEventListener('change', (e) => this.handleFileImport(e));
 
         // Header buttons
@@ -110,6 +114,10 @@ class VideoEditor {
         this.undoBtn.addEventListener('click', () => this.undo());
         this.redoBtn.addEventListener('click', () => this.redo());
         this.exportBtn.addEventListener('click', () => this.openExportModal());
+        this.exportBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.openExportModal();
+        });
 
         // Playback
         this.playBtn.addEventListener('click', () => this.togglePlay());
@@ -132,21 +140,37 @@ class VideoEditor {
         // Scissor button
         this.scissorBtn.addEventListener('click', () => this.splitAtCursor());
 
-        // Tools
+        // Tools - avec support touch
         this.toolBtns.forEach(btn => {
             btn.addEventListener('click', () => this.handleTool(btn.dataset.tool));
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.handleTool(btn.dataset.tool);
+            });
         });
 
         this.panelToolBtns.forEach(btn => {
             btn.addEventListener('click', () => this.handleTool(btn.dataset.tool));
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.handleTool(btn.dataset.tool);
+            });
         });
 
         // More tools button
         this.moreToolsBtn.addEventListener('click', () => this.toggleToolsPanel());
+        this.moreToolsBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.toggleToolsPanel();
+        });
 
         // Export modal
         this.closeExportBtn.addEventListener('click', () => this.closeExportModal());
         this.startExportBtn.addEventListener('click', () => this.startExport());
+        this.startExportBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.startExport();
+        });
         this.exportModal.addEventListener('click', (e) => {
             if (e.target === this.exportModal) this.closeExportModal();
         });
@@ -1143,8 +1167,23 @@ class VideoEditor {
     }
 
     async saveFile(blob, filename) {
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
         try {
-            if ('showSaveFilePicker' in window) {
+            // Option 1: Web Share API (meilleur pour mobile)
+            if (navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: blob.type })] })) {
+                const file = new File([blob], filename, { type: blob.type });
+                await navigator.share({
+                    title: 'Vidéo exportée',
+                    text: 'Votre vidéo éditée',
+                    files: [file]
+                });
+                this.showToast('Vidéo partagée avec succès!', 'success');
+                return;
+            }
+
+            // Option 2: File System Access API (Desktop moderne)
+            if ('showSaveFilePicker' in window && !isMobile) {
                 const handle = await window.showSaveFilePicker({
                     suggestedName: filename,
                     types: [{ description: 'Video File', accept: { 'video/*': ['.webm'] } }]
@@ -1152,24 +1191,84 @@ class VideoEditor {
                 const writable = await handle.createWritable();
                 await writable.write(blob);
                 await writable.close();
-            } else {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                a.click();
-                URL.revokeObjectURL(url);
+                this.showToast('Vidéo sauvegardée!', 'success');
+                return;
             }
+
+            // Option 3: Téléchargement classique
+            await this.downloadFile(blob, filename);
+
         } catch (error) {
             if (error.name !== 'AbortError') {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                a.click();
-                URL.revokeObjectURL(url);
+                // Fallback au téléchargement classique
+                await this.downloadFile(blob, filename);
             }
         }
+    }
+
+    async downloadFile(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+
+        // Pour mobile, on ouvre dans un nouvel onglet
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            // Sur mobile, afficher un message avec le lien
+            this.showDownloadModal(url, filename);
+        } else {
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+    }
+
+    showDownloadModal(url, filename) {
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Télécharger la vidéo</h3>
+                </div>
+                <div class="modal-body" style="text-align: center;">
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                        Appuyez sur le bouton ci-dessous pour télécharger votre vidéo.
+                    </p>
+                    <a href="${url}" download="${filename}"
+                       class="btn-primary"
+                       style="display: inline-block; text-decoration: none; padding: 1rem 2rem;">
+                        <i class="fas fa-download"></i> Télécharger ${filename}
+                    </a>
+                    <p style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);">
+                        Le fichier sera enregistré dans votre dossier Téléchargements.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-primary close-download-modal">Fermer</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        modal.querySelector('.close-download-modal').addEventListener('click', () => {
+            modal.remove();
+            URL.revokeObjectURL(url);
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+                URL.revokeObjectURL(url);
+            }
+        });
     }
 
     // ==================== KEYBOARD ====================

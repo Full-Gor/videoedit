@@ -613,44 +613,77 @@ body {
 .bottom-toolbar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    justify-content: space-around;
+    gap: 0.25rem;
+    padding: 0.5rem 0.5rem;
     background: var(--bg-dark);
     border-top: 1px solid var(--border-color);
     flex-shrink: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .tool-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.35rem;
-    background: transparent;
-    border: none;
+    gap: 0.25rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
     color: var(--text-secondary);
-    padding: 0.75rem 1.25rem;
+    padding: 0.6rem 0.8rem;
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: var(--transition);
-    min-width: 70px;
+    min-width: 60px;
+    flex-shrink: 0;
 }
 
 .tool-btn i {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
 }
 
 .tool-btn span {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 500;
 }
 
-.tool-btn:hover {
-    background: var(--bg-card);
-    color: var(--text-primary);
+.tool-btn:hover,
+.tool-btn:active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
 }
 
 .tool-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+/* Bouton Supprimer - rouge */
+.tool-btn[data-tool="delete"] {
+    background: rgba(255, 71, 87, 0.2);
+    border-color: var(--error);
+    color: var(--error);
+}
+
+.tool-btn[data-tool="delete"]:hover,
+.tool-btn[data-tool="delete"]:active {
+    background: var(--error);
+    color: white;
+}
+
+/* Bouton Vitesse - accent */
+.tool-btn[data-tool="speed"] {
+    background: rgba(108, 92, 231, 0.2);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.tool-btn[data-tool="speed"]:hover,
+.tool-btn[data-tool="speed"]:active {
     background: var(--accent);
     color: white;
 }
@@ -1139,9 +1172,13 @@ body {
 
     .header-btn,
     .export-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 1rem;
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+
+    .export-btn {
+        background: var(--success);
     }
 
     .playback-controls {
@@ -1150,9 +1187,9 @@ body {
     }
 
     .play-btn {
-        width: 40px;
-        height: 40px;
-        font-size: 1rem;
+        width: 44px;
+        height: 44px;
+        font-size: 1.1rem;
     }
 
     .time-display {
@@ -1161,8 +1198,8 @@ body {
     }
 
     .fullscreen-btn {
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
     }
 
     .timeline-controls {
@@ -1174,8 +1211,8 @@ body {
     }
 
     .zoom-btn {
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
     }
 
     .timeline-container {
@@ -1187,26 +1224,25 @@ body {
     }
 
     .timeline-track {
-        height: 45px;
+        height: 50px;
     }
 
+    /* Bottom toolbar mobile - plus gros et visible */
     .bottom-toolbar {
-        gap: 0.15rem;
-        padding: 0.4rem;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        justify-content: flex-start;
-        -webkit-overflow-scrolling: touch;
+        gap: 0.3rem;
+        padding: 0.5rem;
+        justify-content: center;
+        flex-wrap: wrap;
     }
 
     .tool-btn {
-        padding: 0.5rem 0.6rem;
-        min-width: 50px;
-        flex-shrink: 0;
+        padding: 0.5rem 0.5rem;
+        min-width: 55px;
+        min-height: 50px;
     }
 
     .tool-btn i {
-        font-size: 1rem;
+        font-size: 1.1rem;
     }
 
     .tool-btn span {
@@ -1214,8 +1250,8 @@ body {
     }
 
     .more-btn {
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         flex-shrink: 0;
     }
 
@@ -1225,7 +1261,8 @@ body {
 
     .panel-tool-btn {
         padding: 0.5rem 0.6rem;
-        min-width: 55px;
+        min-width: 60px;
+        min-height: 50px;
     }
 
     .panel-tool-btn i {
@@ -1234,6 +1271,13 @@ body {
 
     .panel-tool-btn span {
         font-size: 0.55rem;
+    }
+
+    /* Floating scissor button - plus gros sur mobile */
+    .floating-scissor-btn {
+        width: 56px;
+        height: 56px;
+        font-size: 1.5rem;
     }
 
     .modal-content {
@@ -1257,6 +1301,22 @@ body {
     .toast {
         width: 100%;
         padding: 0.75rem 1rem;
+    }
+
+    /* Speed presets - plus gros pour touch */
+    .speed-presets {
+        gap: 0.4rem;
+    }
+
+    .speed-preset-btn {
+        min-width: 50px;
+        min-height: 44px;
+        font-size: 0.9rem;
+    }
+
+    /* Tool panels mobile */
+    .tool-options-panel {
+        padding: 1rem;
     }
 }
 
