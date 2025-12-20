@@ -205,8 +205,19 @@ class VideoEditor {
             btn.addEventListener('click', () => this.handleZoom(btn.dataset.zoom));
         });
 
-        // Playhead dragging
+        // Playhead dragging - Mouse and Touch
         this.timeRuler.addEventListener('click', (e) => this.seekToPosition(e));
+        this.timeRuler.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.seekToPosition(e.touches[0]);
+        }, { passive: false });
+        this.timeRuler.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            this.seekToPosition(e.touches[0]);
+        }, { passive: false });
+
+        // Playhead handle dragging
+        this.setupPlayheadDragging();
 
         // Nav buttons
         document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -524,11 +535,35 @@ class VideoEditor {
 
         // Add event listeners for media items
         this.mediaLibraryEl.querySelectorAll('.media-item').forEach(item => {
+            // Double click to add to timeline
             item.addEventListener('dblclick', () => {
                 const media = this.mediaLibrary.find(m => m.id == item.dataset.id);
                 if (media) {
                     this.addToTimeline(media);
                 }
+            });
+
+            // Double tap for touch devices
+            let lastTap = 0;
+            item.addEventListener('touchend', (e) => {
+                if (e.target.closest('.delete-media-btn') || e.target.closest('.convert-btn')) return;
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                if (tapLength < 300 && tapLength > 0) {
+                    // Double tap - add to timeline
+                    e.preventDefault();
+                    const media = this.mediaLibrary.find(m => m.id == item.dataset.id);
+                    if (media) {
+                        this.addToTimeline(media);
+                    }
+                } else {
+                    // Single tap - preview
+                    const media = this.mediaLibrary.find(m => m.id == item.dataset.id);
+                    if (media && (media.type === 'video' || media.type === 'audio')) {
+                        this.previewMedia(media);
+                    }
+                }
+                lastTap = currentTime;
             });
 
             item.addEventListener('dragstart', (e) => {
@@ -807,9 +842,26 @@ class VideoEditor {
         const clipId = parseFloat(clipEl.dataset.id);
         const trackId = clipEl.dataset.track;
 
+        // Click/tap to select
         clipEl.addEventListener('click', (e) => {
             e.stopPropagation();
             this.selectClip(clipId, trackId);
+        });
+
+        // Double click/tap to preview
+        let lastTap = 0;
+        clipEl.addEventListener('touchend', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 300 && tapLength > 0) {
+                // Double tap
+                const clip = this.findClip(clipId, trackId);
+                if (clip) {
+                    this.previewVideo.src = clip.url;
+                    this.previewVideo.currentTime = clip.inPoint;
+                }
+            }
+            lastTap = currentTime;
         });
 
         clipEl.addEventListener('dblclick', () => {
@@ -820,30 +872,27 @@ class VideoEditor {
             }
         });
 
-        // Dragging
+        // Dragging - Mouse and Touch
         let isDragging = false;
         let startX, startLeft;
 
-        clipEl.addEventListener('mousedown', (e) => {
-            if (e.target.classList.contains('resize-handle')) return;
-            if (this.selectedTool === 'razor') {
-                this.splitClipAt(clipId, trackId, e);
-                return;
-            }
+        const startDrag = (x) => {
+            if (this.selectedTool === 'razor') return false;
             isDragging = true;
-            startX = e.clientX;
+            startX = x;
             startLeft = parseFloat(clipEl.style.left);
             clipEl.style.cursor = 'grabbing';
-        });
+            return true;
+        };
 
-        document.addEventListener('mousemove', (e) => {
+        const moveDrag = (x) => {
             if (!isDragging) return;
-            const dx = e.clientX - startX;
+            const dx = x - startX;
             const newLeft = Math.max(0, startLeft + dx);
             clipEl.style.left = newLeft + 'px';
-        });
+        };
 
-        document.addEventListener('mouseup', () => {
+        const endDrag = () => {
             if (isDragging) {
                 isDragging = false;
                 clipEl.style.cursor = 'grab';
@@ -854,7 +903,41 @@ class VideoEditor {
                     this.saveToHistory();
                 }
             }
+        };
+
+        // Mouse events
+        clipEl.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('resize-handle')) return;
+            if (this.selectedTool === 'razor') {
+                this.splitClipAt(clipId, trackId, e);
+                return;
+            }
+            startDrag(e.clientX);
         });
+
+        document.addEventListener('mousemove', (e) => moveDrag(e.clientX));
+        document.addEventListener('mouseup', endDrag);
+
+        // Touch events
+        clipEl.addEventListener('touchstart', (e) => {
+            if (e.target.classList.contains('resize-handle')) return;
+            if (this.selectedTool === 'razor') {
+                this.splitClipAt(clipId, trackId, e.touches[0]);
+                return;
+            }
+            if (startDrag(e.touches[0].clientX)) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        clipEl.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                moveDrag(e.touches[0].clientX);
+            }
+        }, { passive: false });
+
+        clipEl.addEventListener('touchend', endDrag);
 
         // Resize handles
         const leftHandle = clipEl.querySelector('.resize-handle.left');
@@ -868,17 +951,16 @@ class VideoEditor {
         let isResizing = false;
         let startX, startWidth, startLeft;
 
-        handle.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
+        const startResize = (x) => {
             isResizing = true;
-            startX = e.clientX;
+            startX = x;
             startWidth = parseFloat(clipEl.style.width);
             startLeft = parseFloat(clipEl.style.left);
-        });
+        };
 
-        document.addEventListener('mousemove', (e) => {
+        const moveResize = (x) => {
             if (!isResizing) return;
-            const dx = e.clientX - startX;
+            const dx = x - startX;
 
             if (side === 'right') {
                 const newWidth = Math.max(50, startWidth + dx);
@@ -891,9 +973,9 @@ class VideoEditor {
                     clipEl.style.left = newLeft + 'px';
                 }
             }
-        });
+        };
 
-        document.addEventListener('mouseup', () => {
+        const endResize = () => {
             if (isResizing) {
                 isResizing = false;
                 const clip = this.findClip(clipId, trackId);
@@ -904,7 +986,32 @@ class VideoEditor {
                     this.updateDuration();
                 }
             }
+        };
+
+        // Mouse events
+        handle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            startResize(e.clientX);
         });
+
+        document.addEventListener('mousemove', (e) => moveResize(e.clientX));
+        document.addEventListener('mouseup', endResize);
+
+        // Touch events
+        handle.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            startResize(e.touches[0].clientX);
+        }, { passive: false });
+
+        handle.addEventListener('touchmove', (e) => {
+            if (isResizing) {
+                e.preventDefault();
+                moveResize(e.touches[0].clientX);
+            }
+        }, { passive: false });
+
+        handle.addEventListener('touchend', endResize);
     }
 
     findClip(clipId, trackId) {
@@ -1279,6 +1386,65 @@ class VideoEditor {
         }
 
         this.updatePlayhead();
+    }
+
+    setupPlayheadDragging() {
+        let isDragging = false;
+
+        const startDrag = () => {
+            isDragging = true;
+            this.playhead.style.cursor = 'grabbing';
+        };
+
+        const moveDrag = (x) => {
+            if (!isDragging) return;
+            const rect = this.timeRuler.getBoundingClientRect();
+            const scrollLeft = this.timeRuler.parentElement.scrollLeft;
+            const relX = x - rect.left + scrollLeft;
+            this.currentTime = Math.max(0, relX / this.pixelsPerSecond);
+
+            // Sync video
+            const clipInfo = this.findClipAtTime(this.currentTime);
+            if (clipInfo) {
+                const { clip } = clipInfo;
+                const clipOffset = this.currentTime - clip.startTime;
+                const videoTime = clip.inPoint + clipOffset;
+                if (this.previewVideo.src !== clip.url) {
+                    this.previewVideo.src = clip.url;
+                }
+                this.previewVideo.currentTime = videoTime;
+            }
+
+            this.updatePlayhead();
+        };
+
+        const endDrag = () => {
+            isDragging = false;
+            this.playhead.style.cursor = 'grab';
+        };
+
+        // Mouse events
+        this.playhead.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startDrag();
+        });
+
+        document.addEventListener('mousemove', (e) => moveDrag(e.clientX));
+        document.addEventListener('mouseup', endDrag);
+
+        // Touch events
+        this.playhead.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startDrag();
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            if (isDragging && e.touches.length > 0) {
+                moveDrag(e.touches[0].clientX);
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', endDrag);
     }
 
     handlePreviewControl(action) {
@@ -1711,29 +1877,55 @@ class VideoEditor {
         let isDragging = false;
         let startX, startY, startLeft, startTop;
 
-        element.addEventListener('mousedown', (e) => {
+        const startDrag = (x, y) => {
             isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            startLeft = parseFloat(element.style.left);
-            startTop = parseFloat(element.style.top);
+            startX = x;
+            startY = y;
+            startLeft = parseFloat(element.style.left) || 10;
+            startTop = parseFloat(element.style.top) || 10;
             element.style.pointerEvents = 'auto';
-        });
+        };
 
-        document.addEventListener('mousemove', (e) => {
+        const moveDrag = (x, y) => {
             if (!isDragging) return;
 
             const parent = element.parentElement;
-            const dx = (e.clientX - startX) / parent.offsetWidth * 100;
-            const dy = (e.clientY - startY) / parent.offsetHeight * 100;
+            const dx = (x - startX) / parent.offsetWidth * 100;
+            const dy = (y - startY) / parent.offsetHeight * 100;
 
             element.style.left = Math.max(0, Math.min(90, startLeft + dx)) + '%';
             element.style.top = Math.max(0, Math.min(90, startTop + dy)) + '%';
+        };
+
+        const endDrag = () => {
+            isDragging = false;
+        };
+
+        // Mouse events
+        element.addEventListener('mousedown', (e) => {
+            startDrag(e.clientX, e.clientY);
         });
 
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
+        document.addEventListener('mousemove', (e) => {
+            moveDrag(e.clientX, e.clientY);
         });
+
+        document.addEventListener('mouseup', endDrag);
+
+        // Touch events
+        element.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startDrag(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+
+        element.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: false });
+
+        element.addEventListener('touchend', endDrag);
     }
 
     // ==================== SUBTITLES ====================
