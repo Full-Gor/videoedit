@@ -23,6 +23,9 @@ class VideoEditor {
         this.fullscreenBtn = document.getElementById('fullscreen-btn');
         this.currentTimeEl = document.getElementById('current-time');
         this.totalTimeEl = document.getElementById('total-time');
+        this.previewArea = document.getElementById('preview-area');
+        this.orientationBtn = document.getElementById('orientation-btn');
+        this.isPortrait = false;
 
         // Timeline controls
         this.zoomInBtn = document.getElementById('zoom-in');
@@ -122,6 +125,13 @@ class VideoEditor {
         // Playback
         this.playBtn.addEventListener('click', () => this.togglePlay());
         this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+
+        // Orientation toggle
+        this.orientationBtn.addEventListener('click', () => this.toggleOrientation());
+        this.orientationBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.toggleOrientation();
+        });
 
         // Video events
         this.video.addEventListener('loadedmetadata', () => this.onVideoLoaded());
@@ -314,12 +324,26 @@ class VideoEditor {
     }
 
     toggleFullscreen() {
-        const previewArea = document.querySelector('.preview-area');
-
         if (document.fullscreenElement) {
             document.exitFullscreen();
         } else {
-            previewArea.requestFullscreen();
+            this.previewArea.requestFullscreen();
+        }
+    }
+
+    toggleOrientation() {
+        this.isPortrait = !this.isPortrait;
+
+        if (this.isPortrait) {
+            this.previewArea.classList.remove('landscape');
+            this.previewArea.classList.add('portrait');
+            this.orientationBtn.classList.add('portrait');
+            this.showToast('Mode portrait', 'success');
+        } else {
+            this.previewArea.classList.remove('portrait');
+            this.previewArea.classList.add('landscape');
+            this.orientationBtn.classList.remove('portrait');
+            this.showToast('Mode paysage', 'success');
         }
     }
 
