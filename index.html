@@ -83,10 +83,28 @@
         </div>
 
         <!-- Timeline -->
-        <div class="timeline-container">
+        <div class="timeline-container" id="timeline-container">
             <div class="time-ruler" id="time-ruler"></div>
-            <div class="timeline-track" id="timeline-track">
+            <div class="timeline-tracks-wrapper" id="timeline-tracks-wrapper">
+                <!-- Curseur ciseau -->
+                <div class="scissor-cursor" id="scissor-cursor">
+                    <i class="fas fa-cut"></i>
+                    <div class="scissor-line"></div>
+                </div>
+                <!-- Playhead -->
                 <div class="playhead" id="playhead"></div>
+                <!-- Piste vidéo 1 -->
+                <div class="timeline-track" id="track-0" data-track="0">
+                    <div class="track-label">Vidéo 1</div>
+                </div>
+                <!-- Piste vidéo 2 -->
+                <div class="timeline-track" id="track-1" data-track="1">
+                    <div class="track-label">Vidéo 2</div>
+                </div>
+                <!-- Piste audio -->
+                <div class="timeline-track audio-track" id="track-2" data-track="2">
+                    <div class="track-label">Audio</div>
+                </div>
             </div>
         </div>
 

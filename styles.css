@@ -330,6 +330,8 @@ body {
     background: var(--bg-dark);
     padding: 0.5rem 1rem 1rem;
     flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .time-ruler {
@@ -340,7 +342,7 @@ body {
     margin-bottom: 2px;
     display: flex;
     align-items: flex-end;
-    overflow: hidden;
+    min-width: 100%;
 }
 
 .time-ruler .time-marker {
@@ -351,14 +353,46 @@ body {
     transform: translateX(-50%);
 }
 
-.timeline-track {
-    height: 60px;
-    background: var(--bg-card);
-    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+.timeline-tracks-wrapper {
     position: relative;
-    overflow: hidden;
+    min-width: 100%;
 }
 
+.timeline-track {
+    height: 55px;
+    background: var(--bg-card);
+    position: relative;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+}
+
+.timeline-track:last-child {
+    border-bottom: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.timeline-track:first-of-type {
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.timeline-track.audio-track {
+    background: rgba(106, 176, 76, 0.1);
+}
+
+.track-label {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+/* Playhead */
 .playhead {
     position: absolute;
     top: 0;
@@ -366,7 +400,7 @@ body {
     width: 2px;
     height: 100%;
     background: var(--accent);
-    z-index: 10;
+    z-index: 20;
     pointer-events: none;
 }
 
@@ -381,32 +415,170 @@ body {
     border-radius: 50%;
 }
 
+/* Scissor cursor */
+.scissor-cursor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    height: 100%;
+    z-index: 15;
+    pointer-events: none;
+    display: none;
+}
+
+.scissor-cursor.visible {
+    display: block;
+}
+
+.scissor-cursor i {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-45deg);
+    font-size: 1rem;
+    color: #ff6b6b;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    animation: scissorPulse 1s ease infinite;
+}
+
+.scissor-line {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 100%;
+    background: #ff6b6b;
+    opacity: 0.8;
+}
+
+@keyframes scissorPulse {
+    0%, 100% { transform: translateX(-50%) rotate(-45deg) scale(1); }
+    50% { transform: translateX(-50%) rotate(-45deg) scale(1.2); }
+}
+
 /* Video clip on timeline */
 .timeline-clip {
     position: absolute;
-    top: 8px;
-    left: 0;
-    height: calc(100% - 16px);
+    top: 6px;
+    height: calc(100% - 12px);
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     overflow: hidden;
     cursor: grab;
+    border: 2px solid transparent;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    min-width: 30px;
+}
+
+.timeline-clip:hover {
+    border-color: rgba(255,255,255,0.3);
+}
+
+.timeline-clip.selected {
+    border-color: #fff;
+    box-shadow: 0 0 10px rgba(108, 92, 231, 0.5);
+}
+
+.timeline-clip.dragging {
+    opacity: 0.8;
+    transform: scale(1.02);
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
 
 .timeline-clip:active {
     cursor: grabbing;
 }
 
-.timeline-clip .thumbnails {
+.timeline-clip .clip-content {
     display: flex;
+    align-items: center;
+    width: 100%;
     height: 100%;
+    padding: 0 8px;
+    overflow: hidden;
+}
+
+.timeline-clip .clip-name {
+    font-size: 0.65rem;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.timeline-clip .clip-speed {
+    font-size: 0.55rem;
+    color: rgba(255,255,255,0.7);
+    margin-left: 4px;
+    background: rgba(0,0,0,0.3);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+.timeline-clip .thumbnails {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    opacity: 0.3;
 }
 
 .timeline-clip .thumbnail {
     height: 100%;
+    width: auto;
     object-fit: cover;
+}
+
+/* Resize handles */
+.timeline-clip .resize-handle {
+    position: absolute;
+    top: 0;
+    width: 10px;
+    height: 100%;
+    cursor: ew-resize;
+    background: transparent;
+    z-index: 5;
+}
+
+.timeline-clip .resize-handle:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.timeline-clip .resize-handle.left {
+    left: 0;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.timeline-clip .resize-handle.right {
+    right: 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Drop zone indicator */
+.timeline-track.drop-target {
+    background: rgba(108, 92, 231, 0.2);
+    border: 2px dashed var(--accent);
+}
+
+/* Speed indicator on clip */
+.timeline-clip[data-speed]:not([data-speed="1"])::after {
+    content: attr(data-speed) 'x';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 0.55rem;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    padding: 1px 4px;
+    border-radius: 3px;
 }
 
 /* ==================== BOTTOM TOOLBAR ==================== */
