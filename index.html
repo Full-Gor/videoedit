@@ -49,10 +49,38 @@
         <!-- Zone de prévisualisation -->
         <div class="preview-area" id="preview-area">
             <video id="preview-video" playsinline></video>
+            <!-- Conteneur pour les textes -->
+            <div class="text-overlays" id="text-overlays"></div>
             <!-- Bouton orientation -->
             <button class="orientation-btn" id="orientation-btn" title="Changer l'orientation">
                 <i class="fas fa-mobile-alt"></i>
             </button>
+            <!-- Menu radial flottant - à côté de la vidéo -->
+            <div class="fab-container" id="fab-container">
+                <button class="fab-main" id="fab-main">
+                    <i class="fas fa-magic"></i>
+                </button>
+                <div class="fab-menu" id="fab-menu">
+                    <button class="fab-item" data-tool="split" data-label="Diviser">
+                        <i class="fas fa-cut"></i>
+                    </button>
+                    <button class="fab-item" data-tool="speed" data-label="Vitesse">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </button>
+                    <button class="fab-item" data-tool="delete" data-label="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="fab-item" data-tool="text" data-label="Texte">
+                        <i class="fas fa-font"></i>
+                    </button>
+                    <button class="fab-item" data-tool="filters" data-label="Filtres">
+                        <i class="fas fa-palette"></i>
+                    </button>
+                    <button class="fab-item" data-tool="audio" data-label="Audio">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Contrôles de lecture -->
@@ -108,33 +136,6 @@
                 <div class="timeline-track audio-track" id="track-2" data-track="2">
                     <div class="track-label">Audio</div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Menu radial flottant -->
-        <div class="fab-container" id="fab-container">
-            <button class="fab-main" id="fab-main">
-                <i class="fas fa-plus"></i>
-            </button>
-            <div class="fab-menu" id="fab-menu">
-                <button class="fab-item" data-tool="split" data-label="Diviser">
-                    <i class="fas fa-cut"></i>
-                </button>
-                <button class="fab-item" data-tool="speed" data-label="Vitesse">
-                    <i class="fas fa-tachometer-alt"></i>
-                </button>
-                <button class="fab-item" data-tool="delete" data-label="Supprimer">
-                    <i class="fas fa-trash"></i>
-                </button>
-                <button class="fab-item" data-tool="adjust" data-label="Ajuster">
-                    <i class="fas fa-sliders-h"></i>
-                </button>
-                <button class="fab-item" data-tool="filters" data-label="Filtres">
-                    <i class="fas fa-palette"></i>
-                </button>
-                <button class="fab-item" data-tool="audio" data-label="Audio">
-                    <i class="fas fa-volume-up"></i>
-                </button>
             </div>
         </div>
     </div>

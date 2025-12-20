@@ -111,6 +111,15 @@ class VideoEditor {
         this.speedEndMarker = null;
         this.speedSelection = null;
 
+        // Text overlays state
+        this.textOverlays = [];
+        this.textIdCounter = 0;
+        this.selectedTextOverlay = null;
+        this.textOverlaysContainer = document.getElementById('text-overlays');
+        this.isDraggingText = false;
+        this.isResizingText = false;
+        this.textDragOffset = { x: 0, y: 0 };
+
         // Current playback clip index
         this.currentClipIndex = 0;
 
@@ -158,6 +167,13 @@ class VideoEditor {
         this.video.addEventListener('timeupdate', () => this.onTimeUpdate());
         this.video.addEventListener('ended', () => this.onVideoEnded());
         this.video.addEventListener('click', () => this.togglePlay());
+
+        // Deselect text when clicking on preview area
+        this.previewArea.addEventListener('click', (e) => {
+            if (!e.target.closest('.text-overlay') && !e.target.closest('.fab-container')) {
+                this.deselectTextOverlays();
+            }
+        });
 
         // Zoom controls
         this.zoomInBtn.addEventListener('click', () => this.zoomIn());
@@ -1090,48 +1106,56 @@ class VideoEditor {
         const newClips = [];
         const clipEnd = clip.startTime + clip.duration;
 
+        // Calculer les positions source
+        const sourceRatio = (clip.sourceEnd - clip.sourceStart) / clip.duration;
+        const speedSourceStart = clip.sourceStart + (this.speedStartTime - clip.startTime) * sourceRatio;
+        const speedSourceEnd = clip.sourceStart + (this.speedEndTime - clip.startTime) * sourceRatio;
+
+        // Calculer la nouvelle durée du segment avec vitesse
+        const originalSpeedDuration = this.speedEndTime - this.speedStartTime;
+        const newSpeedDuration = originalSpeedDuration / speed;
+
+        let currentStartTime = clip.startTime;
+
         // Avant la zone
         if (this.speedStartTime > clip.startTime) {
             const duration = this.speedStartTime - clip.startTime;
-            const sourceRel = (duration / clip.duration) * (clip.sourceEnd - clip.sourceStart);
             newClips.push({
                 id: this.clipIdCounter++,
                 trackIndex: clip.trackIndex,
-                startTime: clip.startTime,
+                startTime: currentStartTime,
                 sourceStart: clip.sourceStart,
-                sourceEnd: clip.sourceStart + sourceRel,
+                sourceEnd: speedSourceStart,
                 duration: duration,
                 speed: clip.speed,
                 name: clip.name
             });
+            currentStartTime += duration;
         }
 
         // Zone avec nouvelle vitesse
-        const speedDuration = this.speedEndTime - this.speedStartTime;
-        const sourceStart = ((this.speedStartTime - clip.startTime) / clip.duration) * (clip.sourceEnd - clip.sourceStart);
-        const sourceEnd = ((this.speedEndTime - clip.startTime) / clip.duration) * (clip.sourceEnd - clip.sourceStart);
-
         newClips.push({
             id: this.clipIdCounter++,
             trackIndex: clip.trackIndex,
-            startTime: this.speedStartTime,
-            sourceStart: clip.sourceStart + sourceStart,
-            sourceEnd: clip.sourceStart + sourceEnd,
-            duration: speedDuration / speed,
+            startTime: currentStartTime,
+            sourceStart: speedSourceStart,
+            sourceEnd: speedSourceEnd,
+            duration: newSpeedDuration,
             speed: speed,
             name: `${clip.name} (${speed}x)`
         });
+        currentStartTime += newSpeedDuration;
 
         // Après la zone
         if (this.speedEndTime < clipEnd) {
-            const duration = clipEnd - this.speedEndTime;
+            const afterDuration = clipEnd - this.speedEndTime;
             newClips.push({
                 id: this.clipIdCounter++,
                 trackIndex: clip.trackIndex,
-                startTime: this.speedEndTime,
-                sourceStart: clip.sourceStart + sourceEnd,
+                startTime: currentStartTime,
+                sourceStart: speedSourceEnd,
                 sourceEnd: clip.sourceEnd,
-                duration: duration,
+                duration: afterDuration,
                 speed: clip.speed,
                 name: clip.name
             });
@@ -1286,7 +1310,7 @@ class VideoEditor {
                 this.showFiltersPanel();
                 break;
             case 'text':
-                this.showToast('Fonctionnalité texte à venir', 'info');
+                this.addTextOverlay();
                 break;
             case 'audio':
                 this.showAudioPanel();
@@ -1490,6 +1514,299 @@ class VideoEditor {
         rotation += 90;
         this.video.style.transform = `rotate(${rotation}deg)`;
         this.showToast('Rotation +90°', 'success');
+    }
+
+    // ==================== TEXT OVERLAYS ====================
+
+    addTextOverlay() {
+        const textId = this.textIdCounter++;
+        const textData = {
+            id: textId,
+            text: 'Votre texte',
+            x: 50, // pourcentage
+            y: 50, // pourcentage
+            fontSize: 24,
+            fontFamily: 'Inter',
+            color: '#ffffff',
+            backgroundColor: 'transparent',
+            bold: false,
+            italic: false
+        };
+
+        this.textOverlays.push(textData);
+        this.renderTextOverlay(textData);
+        this.selectTextOverlay(textId);
+        this.showTextEditPanel(textData);
+        this.showToast('Texte ajouté - Déplacez et modifiez-le', 'success');
+    }
+
+    renderTextOverlay(textData) {
+        const overlay = document.createElement('div');
+        overlay.className = 'text-overlay';
+        overlay.dataset.textId = textData.id;
+
+        overlay.style.left = `${textData.x}%`;
+        overlay.style.top = `${textData.y}%`;
+        overlay.style.transform = 'translate(-50%, -50%)';
+
+        overlay.innerHTML = `
+            <div class="text-overlay-content" contenteditable="false"
+                 style="font-size: ${textData.fontSize}px;
+                        font-family: ${textData.fontFamily};
+                        color: ${textData.color};
+                        background-color: ${textData.backgroundColor};
+                        font-weight: ${textData.bold ? 'bold' : 'normal'};
+                        font-style: ${textData.italic ? 'italic' : 'normal'};">
+                ${textData.text}
+            </div>
+            <div class="resize-handle nw"></div>
+            <div class="resize-handle ne"></div>
+            <div class="resize-handle sw"></div>
+            <div class="resize-handle se"></div>
+        `;
+
+        // Events
+        this.setupTextEvents(overlay, textData);
+
+        this.textOverlaysContainer.appendChild(overlay);
+    }
+
+    setupTextEvents(overlay, textData) {
+        // Click to select
+        overlay.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.selectTextOverlay(textData.id);
+            this.showTextEditPanel(textData);
+        });
+
+        // Drag to move
+        overlay.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('resize-handle')) return;
+            e.preventDefault();
+            this.startTextDrag(textData, e);
+        });
+
+        overlay.addEventListener('touchstart', (e) => {
+            if (e.target.classList.contains('resize-handle')) return;
+            this.startTextDrag(textData, e.touches[0]);
+        }, { passive: true });
+
+        // Resize handles
+        overlay.querySelectorAll('.resize-handle').forEach(handle => {
+            handle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.startTextResize(textData, e, handle.className.split(' ')[1]);
+            });
+
+            handle.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                this.startTextResize(textData, e.touches[0], handle.className.split(' ')[1]);
+            }, { passive: true });
+        });
+
+        // Double click to edit text directly
+        overlay.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            const content = overlay.querySelector('.text-overlay-content');
+            content.contentEditable = true;
+            content.focus();
+
+            // Select all text
+            const range = document.createRange();
+            range.selectNodeContents(content);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        });
+
+        // Save on blur
+        const content = overlay.querySelector('.text-overlay-content');
+        content.addEventListener('blur', () => {
+            content.contentEditable = false;
+            textData.text = content.textContent;
+        });
+    }
+
+    startTextDrag(textData, e) {
+        this.isDraggingText = true;
+        this.selectedTextOverlay = textData;
+
+        const overlay = document.querySelector(`[data-text-id="${textData.id}"]`);
+        const rect = this.textOverlaysContainer.getBoundingClientRect();
+        const overlayRect = overlay.getBoundingClientRect();
+
+        this.textDragOffset = {
+            x: (e.clientX - overlayRect.left) / rect.width * 100,
+            y: (e.clientY - overlayRect.top) / rect.height * 100
+        };
+
+        const moveHandler = (moveE) => {
+            const clientX = moveE.touches ? moveE.touches[0].clientX : moveE.clientX;
+            const clientY = moveE.touches ? moveE.touches[0].clientY : moveE.clientY;
+
+            const newX = ((clientX - rect.left) / rect.width) * 100;
+            const newY = ((clientY - rect.top) / rect.height) * 100;
+
+            // Clamp values
+            textData.x = Math.max(5, Math.min(95, newX));
+            textData.y = Math.max(5, Math.min(95, newY));
+
+            overlay.style.left = `${textData.x}%`;
+            overlay.style.top = `${textData.y}%`;
+        };
+
+        const upHandler = () => {
+            this.isDraggingText = false;
+            document.removeEventListener('mousemove', moveHandler);
+            document.removeEventListener('mouseup', upHandler);
+            document.removeEventListener('touchmove', moveHandler);
+            document.removeEventListener('touchend', upHandler);
+        };
+
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup', upHandler);
+        document.addEventListener('touchmove', moveHandler, { passive: true });
+        document.addEventListener('touchend', upHandler);
+    }
+
+    startTextResize(textData, e, corner) {
+        this.isResizingText = true;
+        const overlay = document.querySelector(`[data-text-id="${textData.id}"]`);
+        const content = overlay.querySelector('.text-overlay-content');
+        const startFontSize = textData.fontSize;
+        const startY = e.clientY;
+
+        const moveHandler = (moveE) => {
+            const clientY = moveE.touches ? moveE.touches[0].clientY : moveE.clientY;
+            const delta = startY - clientY;
+
+            // Resize based on vertical drag
+            const newSize = Math.max(12, Math.min(120, startFontSize + delta / 2));
+            textData.fontSize = Math.round(newSize);
+            content.style.fontSize = `${textData.fontSize}px`;
+        };
+
+        const upHandler = () => {
+            this.isResizingText = false;
+            document.removeEventListener('mousemove', moveHandler);
+            document.removeEventListener('mouseup', upHandler);
+            document.removeEventListener('touchmove', moveHandler);
+            document.removeEventListener('touchend', upHandler);
+        };
+
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup', upHandler);
+        document.addEventListener('touchmove', moveHandler, { passive: true });
+        document.addEventListener('touchend', upHandler);
+    }
+
+    selectTextOverlay(textId) {
+        // Deselect all
+        document.querySelectorAll('.text-overlay').forEach(el => {
+            el.classList.remove('selected');
+        });
+
+        // Select this one
+        const overlay = document.querySelector(`[data-text-id="${textId}"]`);
+        if (overlay) {
+            overlay.classList.add('selected');
+            this.selectedTextOverlay = this.textOverlays.find(t => t.id === textId);
+        }
+    }
+
+    deselectTextOverlays() {
+        document.querySelectorAll('.text-overlay').forEach(el => {
+            el.classList.remove('selected');
+        });
+        this.selectedTextOverlay = null;
+        this.hideTextEditPanel();
+    }
+
+    showTextEditPanel(textData) {
+        this.hideTextEditPanel();
+
+        const panel = document.createElement('div');
+        panel.className = 'text-edit-panel';
+        panel.id = 'text-edit-panel';
+
+        panel.innerHTML = `
+            <input type="text" id="text-input" value="${textData.text}" placeholder="Votre texte">
+            <select id="font-select">
+                <option value="Inter" ${textData.fontFamily === 'Inter' ? 'selected' : ''}>Inter</option>
+                <option value="Arial" ${textData.fontFamily === 'Arial' ? 'selected' : ''}>Arial</option>
+                <option value="Georgia" ${textData.fontFamily === 'Georgia' ? 'selected' : ''}>Georgia</option>
+                <option value="Verdana" ${textData.fontFamily === 'Verdana' ? 'selected' : ''}>Verdana</option>
+                <option value="Courier New" ${textData.fontFamily === 'Courier New' ? 'selected' : ''}>Courier</option>
+                <option value="Impact" ${textData.fontFamily === 'Impact' ? 'selected' : ''}>Impact</option>
+                <option value="Comic Sans MS" ${textData.fontFamily === 'Comic Sans MS' ? 'selected' : ''}>Comic Sans</option>
+            </select>
+            <input type="number" id="font-size" value="${textData.fontSize}" min="12" max="120" style="width: 60px;">
+            <input type="color" id="text-color" value="${textData.color}">
+            <button class="btn-done" id="text-done">OK</button>
+            <button class="btn-delete" id="text-delete"><i class="fas fa-trash"></i></button>
+        `;
+
+        document.body.appendChild(panel);
+
+        // Events
+        const textInput = panel.querySelector('#text-input');
+        const fontSelect = panel.querySelector('#font-select');
+        const fontSize = panel.querySelector('#font-size');
+        const textColor = panel.querySelector('#text-color');
+
+        const updateText = () => {
+            textData.text = textInput.value;
+            textData.fontFamily = fontSelect.value;
+            textData.fontSize = parseInt(fontSize.value);
+            textData.color = textColor.value;
+            this.updateTextOverlayDisplay(textData);
+        };
+
+        textInput.addEventListener('input', updateText);
+        fontSelect.addEventListener('change', updateText);
+        fontSize.addEventListener('input', updateText);
+        textColor.addEventListener('input', updateText);
+
+        panel.querySelector('#text-done').addEventListener('click', () => {
+            this.hideTextEditPanel();
+            this.deselectTextOverlays();
+        });
+
+        panel.querySelector('#text-delete').addEventListener('click', () => {
+            this.deleteTextOverlay(textData.id);
+        });
+    }
+
+    hideTextEditPanel() {
+        const panel = document.getElementById('text-edit-panel');
+        if (panel) panel.remove();
+    }
+
+    updateTextOverlayDisplay(textData) {
+        const overlay = document.querySelector(`[data-text-id="${textData.id}"]`);
+        if (!overlay) return;
+
+        const content = overlay.querySelector('.text-overlay-content');
+        content.textContent = textData.text;
+        content.style.fontSize = `${textData.fontSize}px`;
+        content.style.fontFamily = textData.fontFamily;
+        content.style.color = textData.color;
+        content.style.fontWeight = textData.bold ? 'bold' : 'normal';
+        content.style.fontStyle = textData.italic ? 'italic' : 'normal';
+    }
+
+    deleteTextOverlay(textId) {
+        const index = this.textOverlays.findIndex(t => t.id === textId);
+        if (index !== -1) {
+            this.textOverlays.splice(index, 1);
+        }
+
+        const overlay = document.querySelector(`[data-text-id="${textId}"]`);
+        if (overlay) overlay.remove();
+
+        this.hideTextEditPanel();
+        this.showToast('Texte supprimé', 'success');
     }
 
     createToolPanel(title, content) {
@@ -1875,6 +2192,9 @@ class VideoEditor {
                 this.closeExportModal();
                 this.deselectClip();
                 this.exitSplitMode();
+                this.exitSpeedMode();
+                this.deselectTextOverlays();
+                this.closeFabMenu();
                 const panel = document.querySelector('.tool-options-panel');
                 if (panel) panel.remove();
                 break;
