@@ -509,6 +509,19 @@ class VideoEditor {
         this.updateTimeDisplay();
         this.updatePlayhead();
         this.checkClipBoundaries();
+        this.updateTextOverlaysVisibility();
+    }
+
+    updateTextOverlaysVisibility() {
+        const currentTime = this.video.currentTime;
+
+        this.textOverlays.forEach(textData => {
+            const overlay = document.querySelector(`[data-text-id="${textData.id}"]`);
+            if (!overlay) return;
+
+            const isVisible = currentTime >= textData.startTime && currentTime <= textData.endTime;
+            overlay.style.display = isVisible ? 'block' : 'none';
+        });
     }
 
     // Vérifie si on doit sauter à un autre segment
@@ -1681,6 +1694,9 @@ class VideoEditor {
 
     addTextOverlay() {
         const textId = this.textIdCounter++;
+        const currentTime = this.video.currentTime || 0;
+        const defaultDuration = 5; // 5 secondes par défaut
+
         const textData = {
             id: textId,
             text: 'Votre texte',
@@ -1691,14 +1707,17 @@ class VideoEditor {
             color: '#ffffff',
             backgroundColor: 'transparent',
             bold: false,
-            italic: false
+            italic: false,
+            startTime: currentTime,
+            endTime: Math.min(currentTime + defaultDuration, this.videoDuration)
         };
 
         this.textOverlays.push(textData);
         this.renderTextOverlay(textData);
         this.selectTextOverlay(textId);
         this.showTextEditPanel(textData);
-        this.showToast('Texte ajouté - Déplacez et modifiez-le', 'success');
+        this.updateTextOverlaysVisibility();
+        this.showToast(`Texte ajouté (${this.formatTime(currentTime)} - ${this.formatTime(textData.endTime)})`, 'success');
     }
 
     renderTextOverlay(textData) {
@@ -1904,6 +1923,10 @@ class VideoEditor {
             </select>
             <input type="number" id="font-size" value="${textData.fontSize}" min="12" max="120" style="width: 60px;">
             <input type="color" id="text-color" value="${textData.color}">
+            <div class="timing-controls">
+                <label>Début: <input type="number" id="text-start" value="${textData.startTime.toFixed(1)}" min="0" max="${this.videoDuration}" step="0.1" style="width: 55px;">s</label>
+                <label>Fin: <input type="number" id="text-end" value="${textData.endTime.toFixed(1)}" min="0" max="${this.videoDuration}" step="0.1" style="width: 55px;">s</label>
+            </div>
             <button class="btn-done" id="text-done">OK</button>
             <button class="btn-delete" id="text-delete"><i class="fas fa-trash"></i></button>
         `;
@@ -1915,19 +1938,26 @@ class VideoEditor {
         const fontSelect = panel.querySelector('#font-select');
         const fontSize = panel.querySelector('#font-size');
         const textColor = panel.querySelector('#text-color');
+        const textStart = panel.querySelector('#text-start');
+        const textEnd = panel.querySelector('#text-end');
 
         const updateText = () => {
             textData.text = textInput.value;
             textData.fontFamily = fontSelect.value;
             textData.fontSize = parseInt(fontSize.value);
             textData.color = textColor.value;
+            textData.startTime = parseFloat(textStart.value) || 0;
+            textData.endTime = parseFloat(textEnd.value) || textData.startTime + 5;
             this.updateTextOverlayDisplay(textData);
+            this.updateTextOverlaysVisibility();
         };
 
         textInput.addEventListener('input', updateText);
         fontSelect.addEventListener('change', updateText);
         fontSize.addEventListener('input', updateText);
         textColor.addEventListener('input', updateText);
+        textStart.addEventListener('input', updateText);
+        textEnd.addEventListener('input', updateText);
 
         panel.querySelector('#text-done').addEventListener('click', () => {
             this.hideTextEditPanel();
@@ -2126,22 +2156,57 @@ class VideoEditor {
         this.startExportBtn.disabled = true;
 
         try {
+            // Dimensions selon qualité, en préservant l'aspect ratio
+            const videoAspect = this.video.videoWidth / this.video.videoHeight;
             let width, height, bitrate;
+
             switch (quality) {
-                case '4k': width = 3840; height = 2160; bitrate = 35000000; break;
-                case '1080p': width = 1920; height = 1080; bitrate = 8000000; break;
-                case '720p': width = 1280; height = 720; bitrate = 5000000; break;
-                case '480p': width = 854; height = 480; bitrate = 2500000; break;
-                default: width = 1920; height = 1080; bitrate = 8000000;
+                case '4k': height = 2160; bitrate = 35000000; break;
+                case '1080p': height = 1080; bitrate = 8000000; break;
+                case '720p': height = 720; bitrate = 5000000; break;
+                case '480p': height = 480; bitrate = 2500000; break;
+                default: height = 1080; bitrate = 8000000;
             }
+            width = Math.round(height * videoAspect);
+            // S'assurer que la largeur est paire (requis pour certains codecs)
+            width = width % 2 === 0 ? width : width + 1;
 
             const canvas = document.createElement('canvas');
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
 
-            const stream = canvas.captureStream(30);
-            const mediaRecorder = new MediaRecorder(stream, {
+            // Créer un stream vidéo depuis le canvas
+            const canvasStream = canvas.captureStream(30);
+
+            // Créer une vidéo temporaire avec audio
+            const tempVideo = document.createElement('video');
+            tempVideo.src = this.video.src;
+            tempVideo.volume = this.video.volume;
+            tempVideo.muted = false;
+
+            await new Promise(resolve => { tempVideo.onloadeddata = resolve; });
+
+            // Essayer de capturer l'audio
+            let combinedStream;
+            try {
+                const audioCtx = new AudioContext();
+                const source = audioCtx.createMediaElementSource(tempVideo);
+                const dest = audioCtx.createMediaStreamDestination();
+                source.connect(dest);
+                source.connect(audioCtx.destination);
+
+                // Combiner vidéo canvas + audio
+                combinedStream = new MediaStream([
+                    ...canvasStream.getVideoTracks(),
+                    ...dest.stream.getAudioTracks()
+                ]);
+            } catch (audioError) {
+                console.warn('Audio capture failed, exporting without audio:', audioError);
+                combinedStream = canvasStream;
+            }
+
+            const mediaRecorder = new MediaRecorder(combinedStream, {
                 mimeType: 'video/webm;codecs=vp9',
                 videoBitsPerSecond: bitrate
             });
@@ -2168,26 +2233,50 @@ class VideoEditor {
 
             mediaRecorder.start(100);
 
-            const tempVideo = document.createElement('video');
-            tempVideo.src = this.video.src;
-            tempVideo.muted = true;
-
-            await new Promise(resolve => { tempVideo.onloadeddata = resolve; });
-
             const duration = this.videoDuration;
             const startTime = Date.now();
 
             const renderFrame = () => {
-                const elapsed = (Date.now() - startTime) / 1000;
-                const progress = Math.min(elapsed / duration, 1);
+                const currentTime = tempVideo.currentTime;
+                const progress = Math.min(currentTime / duration, 1);
 
                 this.progressFill.style.width = `${Math.round(progress * 100)}%`;
                 this.progressText.textContent = `${Math.round(progress * 100)}%`;
 
+                // Dessiner la vidéo avec filtres
                 ctx.filter = this.video.style.filter || 'none';
                 ctx.drawImage(tempVideo, 0, 0, width, height);
+                ctx.filter = 'none';
 
-                if (progress < 1 && !tempVideo.ended) {
+                // Dessiner les textes visibles à ce moment
+                this.textOverlays.forEach(textData => {
+                    if (currentTime >= textData.startTime && currentTime <= textData.endTime) {
+                        const x = (textData.x / 100) * width;
+                        const y = (textData.y / 100) * height;
+                        const fontSize = (textData.fontSize / 1080) * height; // Scale font size
+
+                        ctx.font = `${textData.bold ? 'bold ' : ''}${textData.italic ? 'italic ' : ''}${fontSize}px ${textData.fontFamily}`;
+                        ctx.fillStyle = textData.color;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+
+                        // Ombre du texte
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                        ctx.shadowBlur = 4;
+                        ctx.shadowOffsetX = 2;
+                        ctx.shadowOffsetY = 2;
+
+                        ctx.fillText(textData.text, x, y);
+
+                        // Reset shadow
+                        ctx.shadowColor = 'transparent';
+                        ctx.shadowBlur = 0;
+                        ctx.shadowOffsetX = 0;
+                        ctx.shadowOffsetY = 0;
+                    }
+                });
+
+                if (!tempVideo.ended && currentTime < duration) {
                     requestAnimationFrame(renderFrame);
                 } else {
                     mediaRecorder.stop();

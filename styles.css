@@ -889,6 +889,20 @@ body {
     width: 100px;
 }
 
+.text-edit-panel .timing-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.text-edit-panel .timing-controls label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
 .text-edit-panel button {
     padding: 0.5rem 1rem;
     border: none;
