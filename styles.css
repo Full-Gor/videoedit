@@ -389,11 +389,23 @@ body {
 
 .time-ruler .time-marker {
     position: absolute;
-    bottom: 4px;
-    font-size: 0.65rem;
+    bottom: 2px;
+    font-size: 0.6rem;
     color: var(--text-muted);
     transform: translateX(-50%);
     z-index: 2;
+    white-space: nowrap;
+}
+
+.time-ruler .time-marker.major {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.time-ruler .time-marker.minor {
+    font-size: 0.55rem;
+    opacity: 0.7;
 }
 
 .time-ruler .time-tick {
@@ -405,12 +417,13 @@ body {
 }
 
 .time-ruler .time-tick.minor {
-    height: 8px;
-    opacity: 0.5;
+    height: 6px;
+    opacity: 0.4;
 }
 
 .time-ruler .time-tick.major {
-    height: 14px;
+    height: 12px;
+    width: 2px;
     background: var(--text-muted);
 }
 

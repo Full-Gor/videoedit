@@ -282,8 +282,10 @@ class VideoEditor {
 
                 // Seulement si c'est un tap (pas de mouvement, < 300ms)
                 if (!this.timelineTouchMoved && elapsed < 300) {
-                    const rect = this.tracksWrapper.getBoundingClientRect();
-                    const x = this.timelineTouchStart.x - rect.left + this.timelineContainer.scrollLeft;
+                    // Utiliser le conteneur pour le calcul (comme handleTimelineClick)
+                    const containerRect = this.timelineContainer.getBoundingClientRect();
+                    const scrollLeft = this.timelineContainer.scrollLeft;
+                    const x = this.timelineTouchStart.x - containerRect.left + scrollLeft;
                     const time = x / (this.pixelsPerSecond * this.zoom);
                     const clampedTime = Math.max(0, Math.min(this.videoDuration, time));
 
@@ -293,6 +295,7 @@ class VideoEditor {
                         this.handleSpeedClick(clampedTime);
                     } else {
                         this.positionCutCursor(x);
+                        this.seekTo(clampedTime);
                     }
                 }
 
@@ -657,50 +660,64 @@ class VideoEditor {
         const pixelsPerSecondZoomed = this.pixelsPerSecond * this.zoom;
 
         // Calculer les intervalles selon le zoom
-        let majorInterval, minorInterval, showMs;
+        let majorInterval, labelInterval, tickInterval, showMs;
 
         if (pixelsPerSecondZoomed >= 500) {
-            // Très zoomé : marqueurs principaux chaque seconde, mineurs chaque 100ms
-            majorInterval = 1;
-            minorInterval = 0.1;
+            // Très zoomé : labels chaque seconde, ticks chaque 100ms
+            majorInterval = 5;
+            labelInterval = 1;
+            tickInterval = 0.1;
             showMs = true;
         } else if (pixelsPerSecondZoomed >= 200) {
-            // Zoomé : marqueurs principaux chaque seconde, mineurs chaque 500ms
-            majorInterval = 1;
-            minorInterval = 0.5;
+            // Zoomé : labels chaque seconde, ticks chaque 500ms
+            majorInterval = 5;
+            labelInterval = 1;
+            tickInterval = 0.5;
             showMs = true;
         } else if (pixelsPerSecondZoomed >= 100) {
-            // Normal : marqueurs principaux chaque 5 secondes, mineurs chaque seconde
-            majorInterval = 5;
-            minorInterval = 1;
+            // Normal : labels chaque seconde, ticks chaque seconde
+            majorInterval = 10;
+            labelInterval = 1;
+            tickInterval = 1;
             showMs = false;
         } else if (pixelsPerSecondZoomed >= 50) {
-            // Dézoomé : marqueurs principaux chaque 10 secondes, mineurs chaque 5 secondes
-            majorInterval = 10;
-            minorInterval = 5;
+            // Dézoomé : labels chaque 5 secondes
+            majorInterval = 30;
+            labelInterval = 5;
+            tickInterval = 5;
             showMs = false;
         } else {
-            // Très dézoomé : marqueurs principaux chaque 30 secondes, mineurs chaque 10 secondes
-            majorInterval = 30;
-            minorInterval = 10;
+            // Très dézoomé : labels chaque 10 secondes
+            majorInterval = 60;
+            labelInterval = 10;
+            tickInterval = 10;
             showMs = false;
         }
 
-        // Marqueurs mineurs (petits traits)
-        for (let t = 0; t <= this.videoDuration; t += minorInterval) {
-            const marker = document.createElement('div');
-            marker.className = 'time-tick minor';
-            marker.style.left = `${t * pixelsPerSecondZoomed}px`;
-            this.timeRuler.appendChild(marker);
-        }
+        // Créer tous les marqueurs
+        for (let t = 0; t <= this.videoDuration; t += tickInterval) {
+            // Arrondir pour éviter les erreurs de floating point
+            const time = Math.round(t * 1000) / 1000;
+            const position = time * pixelsPerSecondZoomed;
 
-        // Marqueurs majeurs (avec texte)
-        for (let t = 0; t <= this.videoDuration; t += majorInterval) {
-            const marker = document.createElement('span');
-            marker.className = 'time-marker';
-            marker.textContent = showMs ? this.formatTimeMs(t) : this.formatTime(t);
-            marker.style.left = `${t * pixelsPerSecondZoomed}px`;
-            this.timeRuler.appendChild(marker);
+            // Déterminer le type de marqueur
+            const isMajor = Math.abs(time % majorInterval) < 0.01;
+            const isLabeled = Math.abs(time % labelInterval) < 0.01;
+
+            // Trait
+            const tick = document.createElement('div');
+            tick.className = isMajor ? 'time-tick major' : 'time-tick minor';
+            tick.style.left = `${position}px`;
+            this.timeRuler.appendChild(tick);
+
+            // Label si nécessaire
+            if (isLabeled) {
+                const label = document.createElement('span');
+                label.className = isMajor ? 'time-marker major' : 'time-marker minor';
+                label.textContent = showMs ? this.formatTimeMs(time) : this.formatTimeShort(time);
+                label.style.left = `${position}px`;
+                this.timeRuler.appendChild(label);
+            }
         }
     }
 
@@ -710,6 +727,16 @@ class VideoEditor {
         const secs = Math.floor(seconds % 60);
         const ms = Math.floor((seconds % 1) * 10);
         return `${mins}:${secs.toString().padStart(2, '0')}.${ms}`;
+    }
+
+    formatTimeShort(seconds) {
+        if (isNaN(seconds)) return '0s';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        if (mins > 0) {
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        return `${secs}s`;
     }
 
     updatePlayhead() {
@@ -841,9 +868,12 @@ class VideoEditor {
         // If clicked on a clip, don't position cursor
         if (e.target.closest('.timeline-clip')) return;
 
-        const rect = this.tracksWrapper.getBoundingClientRect();
+        // Utiliser le conteneur de la timeline pour le calcul
+        const containerRect = this.timelineContainer.getBoundingClientRect();
         const scrollLeft = this.timelineContainer.scrollLeft;
-        const x = e.clientX - rect.left + scrollLeft;
+
+        // Position X relative au début de la timeline (pas de la zone visible)
+        const x = e.clientX - containerRect.left + scrollLeft;
         const time = x / (this.pixelsPerSecond * this.zoom);
         const clampedTime = Math.max(0, Math.min(this.videoDuration, time));
 
