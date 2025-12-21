@@ -330,8 +330,18 @@ class VideoEditor {
     handleDrop(e) {
         e.preventDefault();
         const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('video/')) {
-            this.loadVideo(file);
+        if (file) {
+            // Vérifier par extension si le type MIME n'est pas défini
+            const validExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.m4v'];
+            const fileName = file.name.toLowerCase();
+            const isVideo = file.type.startsWith('video/') ||
+                           validExtensions.some(ext => fileName.endsWith(ext));
+
+            if (isVideo) {
+                this.loadVideo(file);
+            } else {
+                this.showToast('Format de fichier non supporté', 'error');
+            }
         }
     }
 
@@ -339,6 +349,13 @@ class VideoEditor {
         this.videoFile = file;
         this.videoUrl = URL.createObjectURL(file);
         this.video.src = this.videoUrl;
+
+        // Gestion des erreurs de chargement vidéo
+        this.video.onerror = () => {
+            this.showToast('Erreur lors du chargement de la vidéo', 'error');
+            console.error('Video load error:', this.video.error);
+        };
+
         this.video.load();
 
         // Switch to editor

@@ -688,7 +688,7 @@ body {
 .fab-container {
     position: absolute;
     bottom: 90px;
-    left: 15px;
+    left: 5px; /* Collé au bord de l'écran sur PC */
     z-index: 100;
 }
 
