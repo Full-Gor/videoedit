@@ -57,6 +57,7 @@ class VideoEditor {
         this.fabRadius = 75; // Rayon du cercle
         this.fabDragging = false;
         this.fabStartAngle = 0;
+        this.fabDidRotate = false; // Pour différencier rotation et clic
 
         // Export modal
         this.exportModal = document.getElementById('export-modal');
@@ -195,13 +196,22 @@ class VideoEditor {
             this.toggleFabMenu();
         });
 
-        // FAB Items
+        // FAB Items - seulement si pas de rotation
         this.fabItems.forEach(item => {
-            item.addEventListener('click', () => {
+            item.addEventListener('click', (e) => {
+                if (this.fabDidRotate) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
                 this.handleTool(item.dataset.tool);
                 this.closeFabMenu();
             });
             item.addEventListener('touchend', (e) => {
+                if (this.fabDidRotate) {
+                    e.preventDefault();
+                    return;
+                }
                 e.preventDefault();
                 this.handleTool(item.dataset.tool);
                 this.closeFabMenu();
@@ -390,6 +400,7 @@ class VideoEditor {
     handleFabRotateStart(e) {
         if (e.target.closest('.fab-item')) {
             this.fabDragging = true;
+            this.fabDidRotate = false;
             this.fabStartAngle = this.getAngleFromCenter(e.clientX, e.clientY);
             this.fabStartRotation = this.fabRotation;
 
@@ -403,6 +414,7 @@ class VideoEditor {
     handleFabRotateTouchStart(e) {
         if (e.target.closest('.fab-item') && e.touches.length === 1) {
             this.fabDragging = true;
+            this.fabDidRotate = false;
             this.fabStartAngle = this.getAngleFromCenter(e.touches[0].clientX, e.touches[0].clientY);
             this.fabStartRotation = this.fabRotation;
 
@@ -417,6 +429,11 @@ class VideoEditor {
         const currentAngle = this.getAngleFromCenter(clientX, clientY);
         const angleDiff = (currentAngle - this.fabStartAngle) * (180 / Math.PI);
 
+        // Si rotation significative, marquer comme rotation (pas clic)
+        if (Math.abs(angleDiff) > 5) {
+            this.fabDidRotate = true;
+        }
+
         this.fabRotation = this.fabStartRotation + angleDiff;
         this.updateFabPositions();
     }
@@ -428,6 +445,11 @@ class VideoEditor {
             document.removeEventListener('mouseup', this.fabRotateMouseUp);
             document.removeEventListener('touchmove', this.fabRotateTouchMove);
             document.removeEventListener('touchend', this.fabRotateTouchEnd);
+
+            // Reset après un court délai pour permettre au clic de vérifier
+            setTimeout(() => {
+                this.fabDidRotate = false;
+            }, 100);
         }
     }
 
@@ -2325,7 +2347,7 @@ class VideoEditor {
         setTimeout(() => {
             toast.style.animation = 'slideUp 0.3s ease reverse';
             setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        }, 1200);
     }
 }
 
