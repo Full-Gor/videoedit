@@ -129,6 +129,10 @@ class VideoEditor {
         // Current playback clip index
         this.currentClipIndex = 0;
 
+        // Timeline touch state (pour différencier scroll et tap)
+        this.timelineTouchStart = null;
+        this.timelineTouchMoved = false;
+
         // Initialize
         this.init();
     }
@@ -249,23 +253,51 @@ class VideoEditor {
     }
 
     setupTouchEvents() {
-        // Touch events for timeline
+        // Touch events for timeline - différencier scroll et tap
         this.tracksWrapper.addEventListener('touchstart', (e) => {
-            // Only handle if not on a clip
             if (!e.target.closest('.timeline-clip')) {
-                const rect = this.tracksWrapper.getBoundingClientRect();
-                const x = e.touches[0].clientX - rect.left + this.timelineContainer.scrollLeft;
-                const time = x / (this.pixelsPerSecond * this.zoom);
-                const clampedTime = Math.max(0, Math.min(this.videoDuration, time));
+                this.timelineTouchStart = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY,
+                    time: Date.now()
+                };
+                this.timelineTouchMoved = false;
+            }
+        }, { passive: true });
 
-                // Si en mode découpe ou vitesse, gérer les marqueurs
-                if (this.splitMode) {
-                    this.handleSplitClick(clampedTime);
-                } else if (this.speedMode) {
-                    this.handleSpeedClick(clampedTime);
-                } else {
-                    this.positionCutCursor(x);
+        this.tracksWrapper.addEventListener('touchmove', (e) => {
+            if (this.timelineTouchStart) {
+                const dx = Math.abs(e.touches[0].clientX - this.timelineTouchStart.x);
+                const dy = Math.abs(e.touches[0].clientY - this.timelineTouchStart.y);
+                // Si mouvement > 10px, c'est un scroll
+                if (dx > 10 || dy > 10) {
+                    this.timelineTouchMoved = true;
                 }
+            }
+        }, { passive: true });
+
+        this.tracksWrapper.addEventListener('touchend', (e) => {
+            if (!e.target.closest('.timeline-clip') && this.timelineTouchStart) {
+                const elapsed = Date.now() - this.timelineTouchStart.time;
+
+                // Seulement si c'est un tap (pas de mouvement, < 300ms)
+                if (!this.timelineTouchMoved && elapsed < 300) {
+                    const rect = this.tracksWrapper.getBoundingClientRect();
+                    const x = this.timelineTouchStart.x - rect.left + this.timelineContainer.scrollLeft;
+                    const time = x / (this.pixelsPerSecond * this.zoom);
+                    const clampedTime = Math.max(0, Math.min(this.videoDuration, time));
+
+                    if (this.splitMode) {
+                        this.handleSplitClick(clampedTime);
+                    } else if (this.speedMode) {
+                        this.handleSpeedClick(clampedTime);
+                    } else {
+                        this.positionCutCursor(x);
+                    }
+                }
+
+                this.timelineTouchStart = null;
+                this.timelineTouchMoved = false;
             }
         }, { passive: true });
 
@@ -1808,7 +1840,7 @@ class VideoEditor {
 
         const moveHandler = (moveE) => {
             const clientY = moveE.touches ? moveE.touches[0].clientY : moveE.clientY;
-            const delta = startY - clientY;
+            const delta = clientY - startY; // Inversé : tirer vers le bas = agrandir
 
             // Resize based on vertical drag
             const newSize = Math.max(12, Math.min(120, startFontSize + delta / 2));
