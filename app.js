@@ -50,8 +50,13 @@ class VideoEditor {
         // FAB Menu
         this.fabMain = document.getElementById('fab-main');
         this.fabMenu = document.getElementById('fab-menu');
+        this.fabContainer = document.getElementById('fab-container');
         this.fabItems = document.querySelectorAll('.fab-item');
         this.fabOpen = false;
+        this.fabRotation = 0; // Angle de rotation actuel
+        this.fabRadius = 75; // Rayon du cercle
+        this.fabDragging = false;
+        this.fabStartAngle = 0;
 
         // Export modal
         this.exportModal = document.getElementById('export-modal');
@@ -318,18 +323,120 @@ class VideoEditor {
         this.saveState();
     }
 
-    // ==================== FAB MENU ====================
+    // ==================== FAB MENU ROTATIF ====================
 
     toggleFabMenu() {
         this.fabOpen = !this.fabOpen;
         this.fabMain.classList.toggle('active', this.fabOpen);
         this.fabMenu.classList.toggle('active', this.fabOpen);
+
+        if (this.fabOpen) {
+            this.updateFabPositions();
+            this.setupFabRotation();
+        } else {
+            this.cleanupFabRotation();
+        }
     }
 
     closeFabMenu() {
         this.fabOpen = false;
         this.fabMain.classList.remove('active');
         this.fabMenu.classList.remove('active');
+        this.cleanupFabRotation();
+    }
+
+    updateFabPositions() {
+        const itemCount = this.fabItems.length;
+        const angleStep = (2 * Math.PI) / itemCount;
+        // Commence en haut à droite (pour éviter le coin)
+        const startAngle = -Math.PI / 2;
+
+        this.fabItems.forEach((item, index) => {
+            const angle = startAngle + (index * angleStep) + (this.fabRotation * Math.PI / 180);
+            const x = Math.cos(angle) * this.fabRadius;
+            const y = Math.sin(angle) * this.fabRadius;
+
+            item.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(1)`;
+        });
+    }
+
+    setupFabRotation() {
+        // Mouse events
+        this.fabRotateMouseMove = (e) => this.handleFabRotateMove(e.clientX, e.clientY);
+        this.fabRotateMouseUp = () => this.handleFabRotateEnd();
+
+        // Touch events
+        this.fabRotateTouchMove = (e) => {
+            if (e.touches.length === 1) {
+                this.handleFabRotateMove(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        };
+        this.fabRotateTouchEnd = () => this.handleFabRotateEnd();
+
+        // Add listeners to fab items for rotation drag
+        this.fabItems.forEach(item => {
+            item.addEventListener('mousedown', this.handleFabRotateStart.bind(this));
+            item.addEventListener('touchstart', this.handleFabRotateTouchStart.bind(this), { passive: true });
+        });
+    }
+
+    cleanupFabRotation() {
+        document.removeEventListener('mousemove', this.fabRotateMouseMove);
+        document.removeEventListener('mouseup', this.fabRotateMouseUp);
+        document.removeEventListener('touchmove', this.fabRotateTouchMove);
+        document.removeEventListener('touchend', this.fabRotateTouchEnd);
+    }
+
+    handleFabRotateStart(e) {
+        if (e.target.closest('.fab-item')) {
+            this.fabDragging = true;
+            this.fabStartAngle = this.getAngleFromCenter(e.clientX, e.clientY);
+            this.fabStartRotation = this.fabRotation;
+
+            document.addEventListener('mousemove', this.fabRotateMouseMove);
+            document.addEventListener('mouseup', this.fabRotateMouseUp);
+
+            e.preventDefault();
+        }
+    }
+
+    handleFabRotateTouchStart(e) {
+        if (e.target.closest('.fab-item') && e.touches.length === 1) {
+            this.fabDragging = true;
+            this.fabStartAngle = this.getAngleFromCenter(e.touches[0].clientX, e.touches[0].clientY);
+            this.fabStartRotation = this.fabRotation;
+
+            document.addEventListener('touchmove', this.fabRotateTouchMove, { passive: true });
+            document.addEventListener('touchend', this.fabRotateTouchEnd);
+        }
+    }
+
+    handleFabRotateMove(clientX, clientY) {
+        if (!this.fabDragging) return;
+
+        const currentAngle = this.getAngleFromCenter(clientX, clientY);
+        const angleDiff = (currentAngle - this.fabStartAngle) * (180 / Math.PI);
+
+        this.fabRotation = this.fabStartRotation + angleDiff;
+        this.updateFabPositions();
+    }
+
+    handleFabRotateEnd() {
+        if (this.fabDragging) {
+            this.fabDragging = false;
+            document.removeEventListener('mousemove', this.fabRotateMouseMove);
+            document.removeEventListener('mouseup', this.fabRotateMouseUp);
+            document.removeEventListener('touchmove', this.fabRotateTouchMove);
+            document.removeEventListener('touchend', this.fabRotateTouchEnd);
+        }
+    }
+
+    getAngleFromCenter(clientX, clientY) {
+        const rect = this.fabMain.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        return Math.atan2(clientY - centerY, clientX - centerX);
     }
 
     setActiveFabItem(tool) {

@@ -651,11 +651,11 @@ body {
     border-radius: 3px;
 }
 
-/* ==================== FAB MENU (Floating Action Button) - RADIAL ==================== */
+/* ==================== FAB MENU (Floating Action Button) - RADIAL ROTATIF ==================== */
 .fab-container {
     position: absolute;
-    bottom: 70px;
-    left: 35px;
+    bottom: 15px;
+    left: 15px;
     z-index: 100;
 }
 
@@ -684,7 +684,6 @@ body {
 
 .fab-main.active {
     background: linear-gradient(135deg, var(--error), #ff6b6b);
-    transform: rotate(45deg);
 }
 
 .fab-menu {
@@ -693,6 +692,7 @@ body {
     left: 50%;
     width: 0;
     height: 0;
+    transition: none;
 }
 
 .fab-item {
@@ -708,29 +708,21 @@ body {
     align-items: center;
     justify-content: center;
     box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transition: transform 0.15s ease, opacity 0.2s ease, box-shadow 0.2s ease;
     opacity: 0;
     transform: translate(-50%, -50%) scale(0);
+    pointer-events: none;
 }
 
-/* Position circulaire des items - rayon de 80px */
-.fab-menu.active .fab-item:nth-child(1) { transform: translate(calc(-50% + 0px), calc(-50% - 80px)) scale(1); opacity: 1; }
-.fab-menu.active .fab-item:nth-child(2) { transform: translate(calc(-50% + 69px), calc(-50% - 40px)) scale(1); opacity: 1; }
-.fab-menu.active .fab-item:nth-child(3) { transform: translate(calc(-50% + 69px), calc(-50% + 40px)) scale(1); opacity: 1; }
-.fab-menu.active .fab-item:nth-child(4) { transform: translate(calc(-50% + 0px), calc(-50% + 80px)) scale(1); opacity: 1; }
-.fab-menu.active .fab-item:nth-child(5) { transform: translate(calc(-50% - 69px), calc(-50% + 40px)) scale(1); opacity: 1; }
-.fab-menu.active .fab-item:nth-child(6) { transform: translate(calc(-50% - 69px), calc(-50% - 40px)) scale(1); opacity: 1; }
+.fab-menu.active .fab-item {
+    opacity: 1;
+    pointer-events: auto;
+}
 
-/* Délais d'animation */
-.fab-menu.active .fab-item:nth-child(1) { transition-delay: 0s; }
-.fab-menu.active .fab-item:nth-child(2) { transition-delay: 0.03s; }
-.fab-menu.active .fab-item:nth-child(3) { transition-delay: 0.06s; }
-.fab-menu.active .fab-item:nth-child(4) { transition-delay: 0.09s; }
-.fab-menu.active .fab-item:nth-child(5) { transition-delay: 0.12s; }
-.fab-menu.active .fab-item:nth-child(6) { transition-delay: 0.15s; }
+/* Les positions seront calculées dynamiquement via JS */
 
 .fab-item:hover {
-    transform: translate(-50%, -50%) scale(1.2) !important;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
 }
 
 /* Labels - apparaissent au survol */
@@ -740,7 +732,7 @@ body {
     top: -30px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.9);
     color: white;
     padding: 4px 8px;
     border-radius: 4px;
@@ -1398,10 +1390,10 @@ body {
         max-width: 50%;
     }
 
-    /* FAB mobile - radial */
+    /* FAB mobile - radial rotatif */
     .fab-container {
-        bottom: 65px;
-        left: 30px;
+        bottom: 10px;
+        left: 10px;
     }
 
     .fab-main {
@@ -1411,18 +1403,10 @@ body {
     }
 
     .fab-item {
-        width: 42px;
-        height: 42px;
-        font-size: 0.9rem;
+        width: 40px;
+        height: 40px;
+        font-size: 0.85rem;
     }
-
-    /* Position circulaire mobile - rayon réduit */
-    .fab-menu.active .fab-item:nth-child(1) { transform: translate(calc(-50% + 0px), calc(-50% - 65px)) scale(1); }
-    .fab-menu.active .fab-item:nth-child(2) { transform: translate(calc(-50% + 56px), calc(-50% - 32px)) scale(1); }
-    .fab-menu.active .fab-item:nth-child(3) { transform: translate(calc(-50% + 56px), calc(-50% + 32px)) scale(1); }
-    .fab-menu.active .fab-item:nth-child(4) { transform: translate(calc(-50% + 0px), calc(-50% + 65px)) scale(1); }
-    .fab-menu.active .fab-item:nth-child(5) { transform: translate(calc(-50% - 56px), calc(-50% + 32px)) scale(1); }
-    .fab-menu.active .fab-item:nth-child(6) { transform: translate(calc(-50% - 56px), calc(-50% - 32px)) scale(1); }
 
     .fab-item::before {
         display: none;
