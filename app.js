@@ -84,6 +84,7 @@ class VideoEditor {
         this.clips = [];
         this.clipIdCounter = 0;
         this.selectedClip = null;
+        this.clipboardClip = null; // Presse-papier pour copier/coller
 
         // Cut cursor state
         this.cutTime = 0;
@@ -527,20 +528,32 @@ class VideoEditor {
         });
     }
 
-    // Vérifie si on doit sauter à un autre segment
+    // Vérifie si on doit sauter à un autre segment et applique la vitesse
     checkClipBoundaries() {
         if (!this.isPlaying) return;
 
         const currentTime = this.video.currentTime;
         const sortedClips = this.getSortedClips();
 
-        // Trouver le clip actuel
+        // Trouver le clip actuel basé sur sourceStart/sourceEnd
         let currentClip = null;
         for (const clip of sortedClips) {
-            const clipEnd = clip.startTime + clip.duration;
             if (currentTime >= clip.sourceStart && currentTime < clip.sourceEnd) {
                 currentClip = clip;
                 break;
+            }
+        }
+
+        // Appliquer la vitesse du clip actuel
+        if (currentClip) {
+            const targetRate = currentClip.speed || 1;
+            if (this.video.playbackRate !== targetRate) {
+                this.video.playbackRate = targetRate;
+            }
+        } else {
+            // Reset à vitesse normale si pas dans un clip
+            if (this.video.playbackRate !== 1) {
+                this.video.playbackRate = 1;
             }
         }
 
@@ -805,17 +818,19 @@ class VideoEditor {
 
         clipEl.addEventListener('touchstart', (e) => {
             e.stopPropagation();
-            touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            const touch = e.touches[0];
+            touchStartPos = { x: touch.clientX, y: touch.clientY };
 
             // Select on touch
             this.selectClip(clip);
 
-            // Long press for drag
+            // Long press for drag - store touch position for later use
             longPressTimer = setTimeout(() => {
                 clipEl.classList.add('dragging');
-                this.startTouchDrag(clip, e);
+                // Use stored position instead of stale event
+                this.startTouchDragAtPosition(clip, touchStartPos.x, touchStartPos.y, clipEl);
                 if (navigator.vibrate) navigator.vibrate(50);
-            }, 500);
+            }, 300); // Reduced from 500ms to 300ms for faster response
         }, { passive: false });
 
         clipEl.addEventListener('touchmove', (e) => {
@@ -1431,16 +1446,20 @@ class VideoEditor {
     }
 
     startTouchDrag(clip, e) {
+        const touch = e.touches[0];
+        const clipEl = document.querySelector(`[data-clip-id="${clip.id}"]`);
+        this.startTouchDragAtPosition(clip, touch.clientX, touch.clientY, clipEl);
+    }
+
+    startTouchDragAtPosition(clip, clientX, clientY, clipEl) {
         this.isDragging = true;
         this.dragClip = clip;
-        const touch = e.touches[0];
-        this.dragStartX = touch.clientX;
-        this.dragStartY = touch.clientY;
+        this.dragStartX = clientX;
+        this.dragStartY = clientY;
 
-        const clipEl = document.querySelector(`[data-clip-id="${clip.id}"]`);
         if (clipEl) {
             const rect = clipEl.getBoundingClientRect();
-            this.dragOffsetX = touch.clientX - rect.left;
+            this.dragOffsetX = clientX - rect.left;
         }
     }
 
@@ -1552,6 +1571,9 @@ class VideoEditor {
             case 'copy':
                 this.copySelectedClip();
                 break;
+            case 'paste':
+                this.pasteClip();
+                break;
             case 'transform':
                 this.showTransformPanel();
                 break;
@@ -1594,7 +1616,7 @@ class VideoEditor {
         }
     }
 
-    // ==================== COPY ====================
+    // ==================== COPY / PASTE ====================
 
     copySelectedClip() {
         if (!this.selectedClip) {
@@ -1602,28 +1624,54 @@ class VideoEditor {
             return;
         }
 
-        // Créer une copie du clip
-        const originalClip = this.selectedClip;
-        const newClip = {
-            id: this.clipIdCounter++,
-            trackIndex: originalClip.trackIndex,
-            startTime: originalClip.startTime + originalClip.duration + 0.1, // Place après l'original
-            sourceStart: originalClip.sourceStart,
-            sourceEnd: originalClip.sourceEnd,
-            duration: originalClip.duration,
-            speed: originalClip.speed,
-            name: originalClip.name + ' (copie)'
+        // Stocker une copie dans le presse-papier
+        this.clipboardClip = {
+            sourceStart: this.selectedClip.sourceStart,
+            sourceEnd: this.selectedClip.sourceEnd,
+            duration: this.selectedClip.duration,
+            speed: this.selectedClip.speed,
+            name: this.selectedClip.name
         };
 
-        // Ajouter le nouveau clip
-        this.clips.push(newClip);
+        this.showToast('Segment copié dans le presse-papier', 'success');
+    }
 
-        // Sélectionner le nouveau clip
+    pasteClip() {
+        if (!this.clipboardClip) {
+            this.showToast('Rien à coller. Copiez d\'abord un segment.', 'warning');
+            return;
+        }
+
+        // Coller à la position actuelle du curseur ou après le dernier clip
+        const pasteTime = this.cutTime || this.getLastClipEndTime();
+
+        const newClip = {
+            id: this.clipIdCounter++,
+            trackIndex: 0,
+            startTime: pasteTime,
+            sourceStart: this.clipboardClip.sourceStart,
+            sourceEnd: this.clipboardClip.sourceEnd,
+            duration: this.clipboardClip.duration,
+            speed: this.clipboardClip.speed,
+            name: this.clipboardClip.name + ' (collé)'
+        };
+
+        this.clips.push(newClip);
         this.selectedClip = newClip;
 
         this.renderClips();
         this.saveState();
-        this.showToast('Segment copié', 'success');
+        this.showToast('Segment collé', 'success');
+    }
+
+    getLastClipEndTime() {
+        if (this.clips.length === 0) return 0;
+        let maxEnd = 0;
+        this.clips.forEach(clip => {
+            const end = clip.startTime + clip.duration;
+            if (end > maxEnd) maxEnd = end;
+        });
+        return maxEnd + 0.1;
     }
 
     // ==================== SPEED ====================
@@ -2550,6 +2598,18 @@ class VideoEditor {
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
                     this.redo();
+                }
+                break;
+            case 'c':
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    this.copySelectedClip();
+                }
+                break;
+            case 'v':
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    this.pasteClip();
                 }
                 break;
             case 'Escape':
