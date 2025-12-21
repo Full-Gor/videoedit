@@ -654,24 +654,62 @@ class VideoEditor {
         this.timeRuler.style.width = `${timelineWidth}px`;
         this.tracksWrapper.style.width = `${timelineWidth}px`;
 
-        const markerInterval = this.calculateMarkerInterval(this.videoDuration);
+        const pixelsPerSecondZoomed = this.pixelsPerSecond * this.zoom;
 
-        for (let t = 0; t <= this.videoDuration; t += markerInterval) {
+        // Calculer les intervalles selon le zoom
+        let majorInterval, minorInterval, showMs;
+
+        if (pixelsPerSecondZoomed >= 500) {
+            // Très zoomé : marqueurs principaux chaque seconde, mineurs chaque 100ms
+            majorInterval = 1;
+            minorInterval = 0.1;
+            showMs = true;
+        } else if (pixelsPerSecondZoomed >= 200) {
+            // Zoomé : marqueurs principaux chaque seconde, mineurs chaque 500ms
+            majorInterval = 1;
+            minorInterval = 0.5;
+            showMs = true;
+        } else if (pixelsPerSecondZoomed >= 100) {
+            // Normal : marqueurs principaux chaque 5 secondes, mineurs chaque seconde
+            majorInterval = 5;
+            minorInterval = 1;
+            showMs = false;
+        } else if (pixelsPerSecondZoomed >= 50) {
+            // Dézoomé : marqueurs principaux chaque 10 secondes, mineurs chaque 5 secondes
+            majorInterval = 10;
+            minorInterval = 5;
+            showMs = false;
+        } else {
+            // Très dézoomé : marqueurs principaux chaque 30 secondes, mineurs chaque 10 secondes
+            majorInterval = 30;
+            minorInterval = 10;
+            showMs = false;
+        }
+
+        // Marqueurs mineurs (petits traits)
+        for (let t = 0; t <= this.videoDuration; t += minorInterval) {
+            const marker = document.createElement('div');
+            marker.className = 'time-tick minor';
+            marker.style.left = `${t * pixelsPerSecondZoomed}px`;
+            this.timeRuler.appendChild(marker);
+        }
+
+        // Marqueurs majeurs (avec texte)
+        for (let t = 0; t <= this.videoDuration; t += majorInterval) {
             const marker = document.createElement('span');
             marker.className = 'time-marker';
-            marker.textContent = this.formatTime(t);
-            marker.style.left = `${t * this.pixelsPerSecond * this.zoom}px`;
+            marker.textContent = showMs ? this.formatTimeMs(t) : this.formatTime(t);
+            marker.style.left = `${t * pixelsPerSecondZoomed}px`;
             this.timeRuler.appendChild(marker);
         }
     }
 
-    calculateMarkerInterval(duration) {
-        const zoomedDuration = duration / this.zoom;
-        if (zoomedDuration <= 10) return 1;
-        if (zoomedDuration <= 30) return 5;
-        if (zoomedDuration <= 60) return 10;
-        if (zoomedDuration <= 300) return 30;
-        return 60;
+    formatTimeMs(seconds) {
+        if (isNaN(seconds)) return '0:00.0';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        const ms = Math.floor((seconds % 1) * 10);
+        return `${mins}:${secs.toString().padStart(2, '0')}.${ms}`;
     }
 
     updatePlayhead() {
@@ -804,7 +842,8 @@ class VideoEditor {
         if (e.target.closest('.timeline-clip')) return;
 
         const rect = this.tracksWrapper.getBoundingClientRect();
-        const x = e.clientX - rect.left + this.timelineContainer.scrollLeft;
+        const scrollLeft = this.timelineContainer.scrollLeft;
+        const x = e.clientX - rect.left + scrollLeft;
         const time = x / (this.pixelsPerSecond * this.zoom);
         const clampedTime = Math.max(0, Math.min(this.videoDuration, time));
 
@@ -815,6 +854,7 @@ class VideoEditor {
             this.handleSpeedClick(clampedTime);
         } else {
             this.positionCutCursor(x);
+            this.seekTo(clampedTime);
         }
     }
 
@@ -2031,18 +2071,25 @@ class VideoEditor {
     // ==================== ZOOM ====================
 
     zoomIn() {
-        this.zoom = Math.min(4, this.zoom * 1.5);
+        // Permet de zoomer jusqu'à 10x pour voir les millisecondes
+        this.zoom = Math.min(10, this.zoom * 1.5);
         this.applyZoom();
+        this.showToast(`Zoom: ${Math.round(this.zoom * 100)}%`, 'info');
     }
 
     zoomOut() {
-        this.zoom = Math.max(0.25, this.zoom / 1.5);
+        this.zoom = Math.max(0.1, this.zoom / 1.5);
         this.applyZoom();
+        this.showToast(`Zoom: ${Math.round(this.zoom * 100)}%`, 'info');
     }
 
     zoomFit() {
-        this.zoom = 1;
+        // Ajuster le zoom pour voir toute la vidéo
+        const containerWidth = this.timelineContainer.clientWidth - 40;
+        this.zoom = containerWidth / (this.videoDuration * this.pixelsPerSecond);
+        this.zoom = Math.max(0.1, Math.min(10, this.zoom));
         this.applyZoom();
+        this.showToast('Zoom ajusté', 'info');
     }
 
     applyZoom() {

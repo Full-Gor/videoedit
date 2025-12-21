@@ -393,6 +393,25 @@ body {
     font-size: 0.65rem;
     color: var(--text-muted);
     transform: translateX(-50%);
+    z-index: 2;
+}
+
+.time-ruler .time-tick {
+    position: absolute;
+    bottom: 0;
+    width: 1px;
+    background: var(--border-color);
+    z-index: 1;
+}
+
+.time-ruler .time-tick.minor {
+    height: 8px;
+    opacity: 0.5;
+}
+
+.time-ruler .time-tick.major {
+    height: 14px;
+    background: var(--text-muted);
 }
 
 .timeline-tracks-wrapper {
