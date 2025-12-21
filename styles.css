@@ -574,6 +574,7 @@ body {
     border: 2px solid transparent;
     transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
     min-width: 30px;
+    z-index: 30;
 }
 
 .timeline-clip:hover {

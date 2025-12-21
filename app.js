@@ -1118,8 +1118,7 @@ class VideoEditor {
             sourceEnd: clip.sourceStart + sourceRelativeEnd,
             duration: duration2,
             speed: clip.speed,
-            name: clip.name + ' (sélection)',
-            isSelected: true
+            name: clip.name + ' (sélection)'
         };
         newClips.push(selectedSegment);
 
@@ -1148,8 +1147,11 @@ class VideoEditor {
         this.saveState();
         this.showToast('Zone découpée ! Vous pouvez la supprimer ou la déplacer', 'success');
 
-        // Garder les marqueurs visibles mais quitter le mode
+        // Nettoyer les marqueurs et quitter le mode
+        this.clearSplitMarkers();
         this.splitMode = false;
+        this.splitStartTime = null;
+        this.splitEndTime = null;
         const splitBtn = document.querySelector('[data-tool="split"]');
         if (splitBtn) splitBtn.classList.remove('active');
     }
@@ -1547,6 +1549,9 @@ class VideoEditor {
             case 'delete':
                 this.deleteSelectedSegment();
                 break;
+            case 'copy':
+                this.copySelectedClip();
+                break;
             case 'transform':
                 this.showTransformPanel();
                 break;
@@ -1587,6 +1592,38 @@ class VideoEditor {
             this.saveState();
             this.showToast('Clip supprimé', 'success');
         }
+    }
+
+    // ==================== COPY ====================
+
+    copySelectedClip() {
+        if (!this.selectedClip) {
+            this.showToast('Sélectionnez d\'abord un segment à copier', 'warning');
+            return;
+        }
+
+        // Créer une copie du clip
+        const originalClip = this.selectedClip;
+        const newClip = {
+            id: this.clipIdCounter++,
+            trackIndex: originalClip.trackIndex,
+            startTime: originalClip.startTime + originalClip.duration + 0.1, // Place après l'original
+            sourceStart: originalClip.sourceStart,
+            sourceEnd: originalClip.sourceEnd,
+            duration: originalClip.duration,
+            speed: originalClip.speed,
+            name: originalClip.name + ' (copie)'
+        };
+
+        // Ajouter le nouveau clip
+        this.clips.push(newClip);
+
+        // Sélectionner le nouveau clip
+        this.selectedClip = newClip;
+
+        this.renderClips();
+        this.saveState();
+        this.showToast('Segment copié', 'success');
     }
 
     // ==================== SPEED ====================
