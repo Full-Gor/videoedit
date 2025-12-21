@@ -2347,7 +2347,7 @@ class VideoEditor {
         setTimeout(() => {
             toast.style.animation = 'slideUp 0.3s ease reverse';
             setTimeout(() => toast.remove(), 300);
-        }, 1200);
+        }, 800);
     }
 }
 
